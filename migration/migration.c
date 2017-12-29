@@ -945,6 +945,9 @@ void qmp_migrate_start_postcopy(Error **errp)
 // MPLM OPTIONS
 #define 	MPLM_OPTIONS_NONE			0
 #define 	MPLM_OPTIONS_FIRST_ROUND_NONDIRTY	1
+// MPLM DEFAULTS
+#define		MPLM_DEFAULT_INV_INTERVAL		3
+#define		MPLM_DEFAULT_DIRTY_TRANS_PERCENTS	50
 
 // The flag is set at the first migration.
 int             mplm_use_qmp = 0; 
@@ -1223,19 +1226,17 @@ MigrationState *migrate_init(const MigrationParams *params)
     s->error = NULL;
 
     if(mplm_use_qmp == 0){
-      dirtypercents = 50;
       mplm_flag = 1; 
       mplm_type = MPLM_TWO_QUEUES;
 
       mplm_send_counter = 0;
       mplm_send_cycle_size = 100;
       mplm_dirty_pages_sent = 0;
-      mplm_dirty_pages_allot = (int) dirtypercents;
+      mplm_dirty_pages_allot = MPLM_DEFAULT_DIRTY_TRANS_PERCENTS;
       mplm_nondirty_pages_sent = 0;
       mplm_nondirty_pages_allot = 100 - mplm_dirty_pages_allot;
 
-      intervaltime = 3; 
-      mplm_interval = (int) intervaltime; 
+      mplm_interval = MPLM_DEFAULT_INV_INTERVAL; 
       mplm_options = MPLM_OPTIONS_FIRST_ROUND_NONDIRTY; 
     }
     else{
