@@ -1,0 +1,1 @@
+void hmp_set_mplm_migration(Monitor *mon, const QDict *qdict)

@@ -1,0 +1,737 @@
+/*
+ * Declarations for cpu physical memory functions
+ *
+ * Copyright 2011 Red Hat, Inc. and/or its affiliates
+ *
+ * Authors:
+ *  Avi Kivity <avi@redhat.com>
+ *
+ * This work is licensed under the terms of the GNU GPL, version 2 or
+ * later.  See the COPYING file in the top-level directory.
+ *
+ */
+
+/*
+ * This header is for use by exec.c and memory.c ONLY.  Do not include it.
+ * The functions declared here will be removed soon.
+ */
+
+#ifndef RAM_ADDR_H
+#define RAM_ADDR_H
+
+#ifndef CONFIG_USER_ONLY
+#include "hw/xen/xen.h"
+#include "exec/ramlist.h"
+
+struct RAMBlock {
+    struct rcu_head rcu;
+    struct MemoryRegion *mr;
+    uint8_t *host;
+    ram_addr_t offset;
+    ram_addr_t used_length;
+    ram_addr_t max_length;
+    void (*resized)(const char*, uint64_t length, void *host);
+    uint32_t flags;
+    /* Protected by iothread lock.  */
+    char idstr[256];
+    /* RCU-enabled, writes protected by the ramlist lock */
+    QLIST_ENTRY(RAMBlock) next;
+    QLIST_HEAD(, RAMBlockNotifier) ramblock_notifiers;
+    int fd;
+    size_t page_size;
+};
+
+static inline bool offset_in_ramblock(RAMBlock *b, ram_addr_t offset)
+{
+    return (b && b->host && offset < b->used_length) ? true : false;
+}
+
+static inline void *ramblock_ptr(RAMBlock *block, ram_addr_t offset)
+{
+    assert(offset_in_ramblock(block, offset));
+    return (char *)block->host + offset;
+}
+
+long qemu_getrampagesize(void);
+ram_addr_t last_ram_offset(void);
+RAMBlock *qemu_ram_alloc_from_file(ram_addr_t size, MemoryRegion *mr,
+                                   bool share, const char *mem_path,
+                                   Error **errp);
+RAMBlock *qemu_ram_alloc_from_ptr(ram_addr_t size, void *host,
+                                  MemoryRegion *mr, Error **errp);
+RAMBlock *qemu_ram_alloc(ram_addr_t size, MemoryRegion *mr, Error **errp);
+RAMBlock *qemu_ram_alloc_resizeable(ram_addr_t size, ram_addr_t max_size,
+                                    void (*resized)(const char*,
+                                                    uint64_t length,
+                                                    void *host),
+                                    MemoryRegion *mr, Error **errp);
+void qemu_ram_free(RAMBlock *block);
+
+int qemu_ram_resize(RAMBlock *block, ram_addr_t newsize, Error **errp);
+
+#define DIRTY_CLIENTS_ALL     ((1 << DIRTY_MEMORY_NUM) - 1)
+#define DIRTY_CLIENTS_NOCODE  (DIRTY_CLIENTS_ALL & ~(1 << DIRTY_MEMORY_CODE))
+
+static inline bool cpu_physical_memory_get_dirty(ram_addr_t start,
+                                                 ram_addr_t length,
+                                                 unsigned client)
+{
+    DirtyMemoryBlocks *blocks;
+    unsigned long end, page;
+    unsigned long idx, offset, base;
+    bool dirty = false;
+
+    assert(client < DIRTY_MEMORY_NUM);
+
+    end = TARGET_PAGE_ALIGN(start + length) >> TARGET_PAGE_BITS;
+    page = start >> TARGET_PAGE_BITS;
+
+    rcu_read_lock();
+
+    blocks = atomic_rcu_read(&ram_list.dirty_memory[client]);
+
+    idx = page / DIRTY_MEMORY_BLOCK_SIZE;
+    offset = page % DIRTY_MEMORY_BLOCK_SIZE;
+    base = page - offset;
+    while (page < end) {
+        unsigned long next = MIN(end, base + DIRTY_MEMORY_BLOCK_SIZE);
+        unsigned long num = next - base;
+        unsigned long found = find_next_bit(blocks->blocks[idx], num, offset);
+        if (found < num) {
+            dirty = true;
+            break;
+        }
+
+        page = next;
+        idx++;
+        offset = 0;
+        base += DIRTY_MEMORY_BLOCK_SIZE;
+    }
+
+    rcu_read_unlock();
+
+    return dirty;
+}
+
+static inline bool cpu_physical_memory_all_dirty(ram_addr_t start,
+                                                 ram_addr_t length,
+                                                 unsigned client)
+{
+    DirtyMemoryBlocks *blocks;
+    unsigned long end, page;
+    unsigned long idx, offset, base;
+    bool dirty = true;
+
+    assert(client < DIRTY_MEMORY_NUM);
+
+    end = TARGET_PAGE_ALIGN(start + length) >> TARGET_PAGE_BITS;
+    page = start >> TARGET_PAGE_BITS;
+
+    rcu_read_lock();
+
+    blocks = atomic_rcu_read(&ram_list.dirty_memory[client]);
+
+    idx = page / DIRTY_MEMORY_BLOCK_SIZE;
+    offset = page % DIRTY_MEMORY_BLOCK_SIZE;
+    base = page - offset;
+    while (page < end) {
+        unsigned long next = MIN(end, base + DIRTY_MEMORY_BLOCK_SIZE);
+        unsigned long num = next - base;
+        unsigned long found = find_next_zero_bit(blocks->blocks[idx], num, offset);
+        if (found < num) {
+            dirty = false;
+            break;
+        }
+
+        page = next;
+        idx++;
+        offset = 0;
+        base += DIRTY_MEMORY_BLOCK_SIZE;
+    }
+
+    rcu_read_unlock();
+
+    return dirty;
+}
+
+static inline bool cpu_physical_memory_get_dirty_flag(ram_addr_t addr,
+                                                      unsigned client)
+{
+    return cpu_physical_memory_get_dirty(addr, 1, client);
+}
+
+static inline bool cpu_physical_memory_is_clean(ram_addr_t addr)
+{
+    bool vga = cpu_physical_memory_get_dirty_flag(addr, DIRTY_MEMORY_VGA);
+    bool code = cpu_physical_memory_get_dirty_flag(addr, DIRTY_MEMORY_CODE);
+    bool migration =
+        cpu_physical_memory_get_dirty_flag(addr, DIRTY_MEMORY_MIGRATION);
+    return !(vga && code && migration);
+}
+
+static inline uint8_t cpu_physical_memory_range_includes_clean(ram_addr_t start,
+                                                               ram_addr_t length,
+                                                               uint8_t mask)
+{
+    uint8_t ret = 0;
+
+    if (mask & (1 << DIRTY_MEMORY_VGA) &&
+        !cpu_physical_memory_all_dirty(start, length, DIRTY_MEMORY_VGA)) {
+        ret |= (1 << DIRTY_MEMORY_VGA);
+    }
+    if (mask & (1 << DIRTY_MEMORY_CODE) &&
+        !cpu_physical_memory_all_dirty(start, length, DIRTY_MEMORY_CODE)) {
+        ret |= (1 << DIRTY_MEMORY_CODE);
+    }
+    if (mask & (1 << DIRTY_MEMORY_MIGRATION) &&
+        !cpu_physical_memory_all_dirty(start, length, DIRTY_MEMORY_MIGRATION)) {
+        ret |= (1 << DIRTY_MEMORY_MIGRATION);
+    }
+    return ret;
+}
+
+static inline void cpu_physical_memory_set_dirty_flag(ram_addr_t addr,
+                                                      unsigned client)
+{
+    unsigned long page, idx, offset;
+    DirtyMemoryBlocks *blocks;
+
+    assert(client < DIRTY_MEMORY_NUM);
+
+    page = addr >> TARGET_PAGE_BITS;
+    idx = page / DIRTY_MEMORY_BLOCK_SIZE;
+    offset = page % DIRTY_MEMORY_BLOCK_SIZE;
+
+    rcu_read_lock();
+
+    blocks = atomic_rcu_read(&ram_list.dirty_memory[client]);
+
+    set_bit_atomic(offset, blocks->blocks[idx]);
+
+    rcu_read_unlock();
+}
+
+static inline void cpu_physical_memory_set_dirty_range(ram_addr_t start,
+                                                       ram_addr_t length,
+                                                       uint8_t mask)
+{
+    DirtyMemoryBlocks *blocks[DIRTY_MEMORY_NUM];
+    unsigned long end, page;
+    unsigned long idx, offset, base;
+    int i;
+
+    if (!mask && !xen_enabled()) {
+        return;
+    }
+
+    end = TARGET_PAGE_ALIGN(start + length) >> TARGET_PAGE_BITS;
+    page = start >> TARGET_PAGE_BITS;
+
+    rcu_read_lock();
+
+    for (i = 0; i < DIRTY_MEMORY_NUM; i++) {
+        blocks[i] = atomic_rcu_read(&ram_list.dirty_memory[i]);
+    }
+
+    idx = page / DIRTY_MEMORY_BLOCK_SIZE;
+    offset = page % DIRTY_MEMORY_BLOCK_SIZE;
+    base = page - offset;
+    while (page < end) {
+        unsigned long next = MIN(end, base + DIRTY_MEMORY_BLOCK_SIZE);
+
+        if (likely(mask & (1 << DIRTY_MEMORY_MIGRATION))) {
+            bitmap_set_atomic(blocks[DIRTY_MEMORY_MIGRATION]->blocks[idx],
+                              offset, next - page);
+        }
+        if (unlikely(mask & (1 << DIRTY_MEMORY_VGA))) {
+            bitmap_set_atomic(blocks[DIRTY_MEMORY_VGA]->blocks[idx],
+                              offset, next - page);
+        }
+        if (unlikely(mask & (1 << DIRTY_MEMORY_CODE))) {
+            bitmap_set_atomic(blocks[DIRTY_MEMORY_CODE]->blocks[idx],
+                              offset, next - page);
+        }
+
+        page = next;
+        idx++;
+        offset = 0;
+        base += DIRTY_MEMORY_BLOCK_SIZE;
+    }
+
+    rcu_read_unlock();
+
+    xen_modified_memory(start, length);
+}
+
+#if !defined(_WIN32)
+static inline void cpu_physical_memory_set_dirty_lebitmap(unsigned long *bitmap,
+                                                          ram_addr_t start,
+                                                          ram_addr_t pages)
+{
+    unsigned long i, j;
+    unsigned long page_number, c;
+    hwaddr addr;
+    ram_addr_t ram_addr;
+    unsigned long len = (pages + HOST_LONG_BITS - 1) / HOST_LONG_BITS;
+    unsigned long hpratio = getpagesize() / TARGET_PAGE_SIZE;
+    unsigned long page = BIT_WORD(start >> TARGET_PAGE_BITS);
+
+    /* start address is aligned at the start of a word? */
+    if ((((page * BITS_PER_LONG) << TARGET_PAGE_BITS) == start) &&
+        (hpratio == 1)) {
+        unsigned long **blocks[DIRTY_MEMORY_NUM];
+        unsigned long idx;
+        unsigned long offset;
+        long k;
+        long nr = BITS_TO_LONGS(pages);
+
+        idx = (start >> TARGET_PAGE_BITS) / DIRTY_MEMORY_BLOCK_SIZE;
+        offset = BIT_WORD((start >> TARGET_PAGE_BITS) %
+                          DIRTY_MEMORY_BLOCK_SIZE);
+
+        rcu_read_lock();
+
+        for (i = 0; i < DIRTY_MEMORY_NUM; i++) {
+            blocks[i] = atomic_rcu_read(&ram_list.dirty_memory[i])->blocks;
+        }
+
+        for (k = 0; k < nr; k++) {
+            if (bitmap[k]) {
+                unsigned long temp = leul_to_cpu(bitmap[k]);
+
+                atomic_or(&blocks[DIRTY_MEMORY_MIGRATION][idx][offset], temp);
+                atomic_or(&blocks[DIRTY_MEMORY_VGA][idx][offset], temp);
+                if (tcg_enabled()) {
+                    atomic_or(&blocks[DIRTY_MEMORY_CODE][idx][offset], temp);
+                }
+            }
+
+            if (++offset >= BITS_TO_LONGS(DIRTY_MEMORY_BLOCK_SIZE)) {
+                offset = 0;
+                idx++;
+            }
+        }
+
+        rcu_read_unlock();
+
+        xen_modified_memory(start, pages << TARGET_PAGE_BITS);
+    } else {
+        uint8_t clients = tcg_enabled() ? DIRTY_CLIENTS_ALL : DIRTY_CLIENTS_NOCODE;
+        /*
+         * bitmap-traveling is faster than memory-traveling (for addr...)
+         * especially when most of the memory is not dirty.
+         */
+        for (i = 0; i < len; i++) {
+            if (bitmap[i] != 0) {
+                c = leul_to_cpu(bitmap[i]);
+                do {
+                    j = ctzl(c);
+                    c &= ~(1ul << j);
+                    page_number = (i * HOST_LONG_BITS + j) * hpratio;
+                    addr = page_number * TARGET_PAGE_SIZE;
+                    ram_addr = start + addr;
+                    cpu_physical_memory_set_dirty_range(ram_addr,
+                                       TARGET_PAGE_SIZE * hpratio, clients);
+                } while (c != 0);
+            }
+        }
+    }
+}
+#endif /* not _WIN32 */
+
+bool cpu_physical_memory_test_and_clear_dirty(ram_addr_t start,
+                                              ram_addr_t length,
+                                              unsigned client);
+
+static inline void cpu_physical_memory_clear_dirty_range(ram_addr_t start,
+                                                         ram_addr_t length)
+{
+    cpu_physical_memory_test_and_clear_dirty(start, length, DIRTY_MEMORY_MIGRATION);
+    cpu_physical_memory_test_and_clear_dirty(start, length, DIRTY_MEMORY_VGA);
+    cpu_physical_memory_test_and_clear_dirty(start, length, DIRTY_MEMORY_CODE);
+}
+
+
+static inline
+uint64_t cpu_physical_memory_sync_dirty_bitmap(unsigned long *dest,
+                                               ram_addr_t start,
+                                               ram_addr_t length,
+                                               int64_t *real_dirty_pages)
+{
+    ram_addr_t addr;
+    unsigned long page = BIT_WORD(start >> TARGET_PAGE_BITS);
+    uint64_t num_dirty = 0;
+
+    /* start address is aligned at the start of a word? */
+    if (((page * BITS_PER_LONG) << TARGET_PAGE_BITS) == start) {
+        int k;
+        int nr = BITS_TO_LONGS(length >> TARGET_PAGE_BITS);
+        unsigned long * const *src;
+        unsigned long idx = (page * BITS_PER_LONG) / DIRTY_MEMORY_BLOCK_SIZE;
+        unsigned long offset = BIT_WORD((page * BITS_PER_LONG) %
+                                        DIRTY_MEMORY_BLOCK_SIZE);
+        rcu_read_lock();
+
+        src = atomic_rcu_read(
+                &ram_list.dirty_memory[DIRTY_MEMORY_MIGRATION])->blocks;
+
+        for (k = page; k < page + nr; k++) {
+            if (src[idx][offset]) {
+                unsigned long bits = atomic_xchg(&src[idx][offset], 0);
+                unsigned long new_dirty;
+                *real_dirty_pages += ctpopl(bits);
+                new_dirty = ~dest[k];
+                dest[k] |= bits;
+                new_dirty &= bits;
+                num_dirty += ctpopl(new_dirty);
+            }
+
+            if (++offset >= BITS_TO_LONGS(DIRTY_MEMORY_BLOCK_SIZE)) {
+                offset = 0;
+                idx++;
+            }
+        }
+
+        rcu_read_unlock();
+    } else {
+        for (addr = 0; addr < length; addr += TARGET_PAGE_SIZE) {
+            if (cpu_physical_memory_test_and_clear_dirty(
+                        start + addr,
+                        TARGET_PAGE_SIZE,
+                        DIRTY_MEMORY_MIGRATION)) {
+                *real_dirty_pages += 1;
+                long k = (start + addr) >> TARGET_PAGE_BITS;
+                if (!test_and_set_bit(k, dest)) {
+                    num_dirty++;
+                }
+            }
+        }
+    }
+
+    return num_dirty;
+}
+
+
+static inline
+uint64_t mplm_first_cpu_physical_memory_sync_dirty_bitmap(unsigned long *dest,
+					   unsigned long *nondirtydest,
+                                           ram_addr_t start,
+                                           ram_addr_t length,
+                                           int64_t *real_dirty_pages,
+                                           uint64_t *mplm_nondirty_pages,
+                                           uint64_t *cur_num_nondirty_pages 
+					)
+{
+    ram_addr_t addr;
+    unsigned long page = BIT_WORD(start >> TARGET_PAGE_BITS);
+    uint64_t num_dirty = 0;
+    // MPLM
+    uint64_t num_new_dirty = 0;
+//int assertfirstflg = 0; 
+    // MPLM
+    //uint64_t checked_dirty_pages = 0; 
+    //uint64_t checked_nondirty_pages = 0; 
+    //uint64_t checked_error_uncleared_sent = 0; 
+    //uint64_t checked_dirtied_sent = 0; 
+
+    unsigned long current_dirty;
+    unsigned long current_nondirty;
+
+    /* start address is aligned at the start of a word? */
+    if (((page * BITS_PER_LONG) << TARGET_PAGE_BITS) == start) {
+        int k;
+        int nr = BITS_TO_LONGS(length >> TARGET_PAGE_BITS);
+        unsigned long * const *src;
+        unsigned long idx = (page * BITS_PER_LONG) / DIRTY_MEMORY_BLOCK_SIZE;
+        unsigned long offset = BIT_WORD((page * BITS_PER_LONG) %
+                                        DIRTY_MEMORY_BLOCK_SIZE);
+// MPLM
+        rcu_read_lock();
+
+        src = atomic_rcu_read(
+                &ram_list.dirty_memory[DIRTY_MEMORY_MIGRATION])->blocks;
+
+        for (k = page; k < page + nr; k++) {
+            if (src[idx][offset]) {
+                unsigned long bits = atomic_xchg(&src[idx][offset], 0);
+                unsigned long new_dirty;
+                *real_dirty_pages += ctpopl(bits);
+                new_dirty = ~dest[k];
+                dest[k] |= bits;
+
+                nondirtydest[k] |= bits; // MPLM
+
+                new_dirty &= bits;
+                num_new_dirty = ctpopl(new_dirty);
+                num_dirty += num_new_dirty;
+                *mplm_nondirty_pages += num_new_dirty;
+               
+            }
+
+            current_dirty = dest[k]; 
+            current_nondirty = nondirtydest[k];
+            (*cur_num_nondirty_pages) += ctpopl(current_dirty & current_nondirty);
+
+            if (++offset >= BITS_TO_LONGS(DIRTY_MEMORY_BLOCK_SIZE)) {
+                offset = 0;
+                idx++;
+            }
+        }
+
+        rcu_read_unlock();
+/*
+printf("Allign (First Round)\n"); 
+printf(" ----> real dirty pages: %" PRId64 ":num dirty pages: %" PRId64 " \n \
+ ----> mplm nondirt %" PRId64" \n", 
+  *real_dirty_pages, num_dirty, *mplm_nondirty_pages); 
+fflush(stdout); 
+
+        for (k = page; k < page + nr; k++) {
+                unsigned long new_dirty;
+                unsigned long new_nondirty;
+                new_dirty = dest[k];
+                new_nondirty = nondirtydest[k]; // fix this
+
+                checked_dirty_pages += ctpopl(new_dirty & ~(new_nondirty));
+                checked_nondirty_pages += ctpopl(new_dirty & new_nondirty);
+
+                checked_error_uncleared_sent = ctpopl(~(new_dirty) & new_nondirty); 
+                checked_dirtied_sent += ctpopl(~(new_dirty) & ~(new_nondirty));
+        }
+
+printf("Checked (First Round) Allign \n \
+ ----> checked dirty pages(1,0)= %" PRId64 ":checked nondirty pages(1,1)= %" PRId64 "\n \
+:checked uncleared sent pages(0,1)=ERROR  %" PRId64":checked dirtied sent(0,0)= %" PRId64 " \n \
+:Total = %" PRId64 " \n",
+  checked_dirty_pages, checked_nondirty_pages, checked_error_uncleared_sent, checked_dirtied_sent,
+(checked_dirty_pages+checked_nondirty_pages+checked_error_uncleared_sent+checked_dirtied_sent)); 
+fflush(stdout); 
+*/
+    } else {
+// MPLM
+        for (addr = 0; addr < length; addr += TARGET_PAGE_SIZE) {
+            long k = (start + addr) >> TARGET_PAGE_BITS;
+            if (cpu_physical_memory_test_and_clear_dirty(
+                        start + addr,
+                        TARGET_PAGE_SIZE,
+                        DIRTY_MEMORY_MIGRATION)) {
+                *real_dirty_pages += 1;
+                //long k = (start + addr) >> TARGET_PAGE_BITS;
+                if (!test_and_set_bit(k, dest)) {
+                    num_dirty++;
+                }
+                // MPLM 
+                if (!test_and_set_bit(k, nondirtydest)) {
+                    *mplm_nondirty_pages += 1;
+                }
+            }
+
+            if (test_bit(k, dest) && test_bit(k, nondirtydest)) {
+                (*cur_num_nondirty_pages)++;
+            }
+        }
+/*
+printf("Not Allign (First Round)\n"); 
+printf(" ----> real dirty pages: %" PRId64 ":num dirty pages: %" PRId64 " \n \
+ ----> mplm nondirt %" PRId64" \n", 
+  *real_dirty_pages, num_dirty, *mplm_nondirty_pages); 
+fflush(stdout); 
+
+        for (addr = 0; addr < length; addr += TARGET_PAGE_SIZE) {
+                long k = (start + addr) >> TARGET_PAGE_BITS;
+                if (test_bit(k, dest) && !test_bit(k, nondirtydest)) {
+                    checked_dirty_pages++;
+                }
+                if (test_bit(k, dest) && test_bit(k, nondirtydest)) {
+                    checked_nondirty_pages++;
+                }
+                if (!test_bit(k, dest) && test_bit(k, nondirtydest)){
+                    checked_error_uncleared_sent++;
+                }
+                if (!test_bit(k, dest) && !test_bit(k, nondirtydest)){
+                    checked_dirtied_sent++;
+                }
+        }
+
+printf("Checked NOT Allign \n \
+ ----> checked dirty pages(1,0)= %" PRId64 ":checked nondirty pages(1,1)= %" PRId64 "\n \
+:checked uncleared sent pages(0,1)=ERROR  %" PRId64":checked dirtied sent(0,0)= %" PRId64 " \n \
+:Total = %" PRId64 " \n",
+  checked_dirty_pages, checked_nondirty_pages, checked_error_uncleared_sent, checked_dirtied_sent,
+(checked_dirty_pages+checked_nondirty_pages+checked_error_uncleared_sent+checked_dirtied_sent)); 
+fflush(stdout); 
+*/
+    }
+
+    return num_dirty;
+}
+
+
+static inline
+uint64_t mplm_next_cpu_physical_memory_sync_dirty_bitmap(unsigned long *dest,
+					   unsigned long *nondirtydest,
+                                           ram_addr_t start,
+                                           ram_addr_t length,
+                                           int64_t *real_dirty_pages,
+                                           uint64_t *mplm_nondirty_pages,
+                                           uint64_t *cur_num_nondirty_pages 
+					)
+{
+    ram_addr_t addr;
+    unsigned long page = BIT_WORD(start >> TARGET_PAGE_BITS);
+    uint64_t num_dirty = 0;
+    uint64_t sync_real_dirty_pages = 0; // number of real dirty page in this sync.
+    uint64_t sync_nondirty_pages = 0;
+    // MPLM
+    //uint64_t checked_dirty_pages = 0; 
+    //uint64_t checked_nondirty_pages = 0; 
+    //uint64_t checked_error_uncleared_sent = 0; 
+    //uint64_t checked_dirtied_sent = 0; 
+
+    unsigned long current_dirty;
+    unsigned long current_nondirty;
+
+    /* start address is aligned at the start of a word? */
+    if (((page * BITS_PER_LONG) << TARGET_PAGE_BITS) == start) {
+        int k;
+        int nr = BITS_TO_LONGS(length >> TARGET_PAGE_BITS);
+        unsigned long * const *src;
+        unsigned long idx = (page * BITS_PER_LONG) / DIRTY_MEMORY_BLOCK_SIZE;
+        unsigned long offset = BIT_WORD((page * BITS_PER_LONG) %
+                                        DIRTY_MEMORY_BLOCK_SIZE);
+
+// MPLM
+        rcu_read_lock();
+
+        src = atomic_rcu_read(
+                &ram_list.dirty_memory[DIRTY_MEMORY_MIGRATION])->blocks;
+
+        for (k = page; k < page + nr; k++) {
+            if (src[idx][offset]) {
+                unsigned long bits = atomic_xchg(&src[idx][offset], 0);
+                unsigned long new_dirty;
+                unsigned long new_nondirty;
+                sync_real_dirty_pages += ctpopl(bits);
+                new_dirty = ~dest[k];
+                dest[k] |= bits;
+
+                new_dirty &= bits;
+                num_dirty += ctpopl(new_dirty);
+
+                new_nondirty = nondirtydest[k]; 
+                new_nondirty &= bits; // MPLM
+                nondirtydest[k] &= (~bits);  // MPLM
+
+                sync_nondirty_pages += ctpopl(new_nondirty);
+
+            }
+
+            current_dirty = dest[k]; 
+            current_nondirty = nondirtydest[k];
+            (*cur_num_nondirty_pages) += ctpopl(current_dirty & current_nondirty);
+
+            if (++offset >= BITS_TO_LONGS(DIRTY_MEMORY_BLOCK_SIZE)) {
+                offset = 0;
+                idx++;
+            }
+        }
+
+        rcu_read_unlock();
+
+        *real_dirty_pages += sync_real_dirty_pages; 
+        *mplm_nondirty_pages -= sync_nondirty_pages;
+/*
+printf("Allign page=%ld nr=%d \n \
+ ----> sync real dirty pages= %" PRId64 ":accu real dirty pages= %" PRId64 " \n \
+ ----> new dirty pages= %" PRId64 ":new nondirty pages= %" PRId64 ":existing nondirty pages= %" PRId64" \n", 
+  page, nr, 
+  sync_real_dirty_pages, *real_dirty_pages, num_dirty, sync_nondirty_pages, *mplm_nondirty_pages); 
+fflush(stdout); 
+// mplm verification
+
+        for (k = page; k < page + nr; k++) {
+                unsigned long new_dirty;
+                unsigned long new_nondirty;
+                new_dirty = dest[k];
+                new_nondirty = nondirtydest[k]; // fix this
+
+                checked_dirty_pages += ctpopl(new_dirty & ~(new_nondirty));
+                checked_nondirty_pages += ctpopl(new_dirty & new_nondirty);
+
+                checked_error_uncleared_sent = ctpopl(~(new_dirty) & new_nondirty); 
+                checked_dirtied_sent += ctpopl(~(new_dirty) & ~(new_nondirty));
+        }
+
+printf("Checked Allign \n \
+ ----> checked dirty pages(1,0)= %" PRId64 ":checked nondirty pages(1,1)= %" PRId64 "\n \
+:checked uncleared sent pages(0,1)=ERROR  %" PRId64":checked dirtied sent(0,0)= %" PRId64 " \n \
+:Total = %" PRId64 " \n",
+  checked_dirty_pages, checked_nondirty_pages, checked_error_uncleared_sent, checked_dirtied_sent,
+(checked_dirty_pages+checked_nondirty_pages+checked_error_uncleared_sent+checked_dirtied_sent)); 
+fflush(stdout); 
+*/
+    } else {
+// MPLM
+        for (addr = 0; addr < length; addr += TARGET_PAGE_SIZE) {
+            long k = (start + addr) >> TARGET_PAGE_BITS;
+            if (cpu_physical_memory_test_and_clear_dirty(
+                        start + addr,
+                        TARGET_PAGE_SIZE,
+                        DIRTY_MEMORY_MIGRATION)) {
+                sync_real_dirty_pages += 1;
+                //long k = (start + addr) >> TARGET_PAGE_BITS;
+                if (!test_and_set_bit(k, dest)) {
+                    num_dirty++;
+                }
+                if (test_and_clear_bit(k, nondirtydest)) {
+                    sync_nondirty_pages += 1;
+                }
+            }
+
+            if (test_bit(k, dest) && test_bit(k, nondirtydest)) {
+                (*cur_num_nondirty_pages)++;
+            }
+        }
+
+        *real_dirty_pages += sync_real_dirty_pages; 
+        *mplm_nondirty_pages -= sync_nondirty_pages;
+/*
+printf("Not Allign page=%ld length=%"PRId64" \n \
+ ----> sync real dirty pages= %" PRId64 ":accu real dirty pages= %" PRId64 " \n \
+ ----> new dirty pages= %" PRId64 ":new nondirty pages= %" PRId64 ":existing nondirty pages= %" PRId64" \n", 
+  page, (uint64_t) length,  
+  sync_real_dirty_pages, *real_dirty_pages, num_dirty, sync_nondirty_pages, *mplm_nondirty_pages); 
+fflush(stdout); 
+
+        for (addr = 0; addr < length; addr += TARGET_PAGE_SIZE) {
+                long k = (start + addr) >> TARGET_PAGE_BITS;
+                if (test_bit(k, dest) && !test_bit(k, nondirtydest)) {
+                    checked_dirty_pages++;
+                }
+                if (test_bit(k, dest) && test_bit(k, nondirtydest)) {
+                    checked_nondirty_pages++;
+                }
+                if (!test_bit(k, dest) && test_bit(k, nondirtydest)){
+                    checked_error_uncleared_sent++;
+                }
+                if (!test_bit(k, dest) && !test_bit(k, nondirtydest)){
+                    checked_dirtied_sent++;
+                }
+        }
+
+printf("Checked NOT Allign \n \
+ ----> checked dirty pages(1,0)= %" PRId64 ":checked nondirty pages(1,1)= %" PRId64 "\n \
+:checked uncleared sent pages(0,1)=ERROR  %" PRId64":checked dirtied sent(0,0)= %" PRId64 " \n \
+:Total = %" PRId64 " \n",
+  checked_dirty_pages, checked_nondirty_pages, checked_error_uncleared_sent, checked_dirtied_sent,
+(checked_dirty_pages+checked_nondirty_pages+checked_error_uncleared_sent+checked_dirtied_sent)); 
+fflush(stdout); 
+*/
+    }
+
+    return num_dirty;
+}
+
+void migration_bitmap_extend(ram_addr_t old, ram_addr_t new);
+#endif
+#endif
