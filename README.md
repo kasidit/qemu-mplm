@@ -84,4 +84,4 @@ TBA
 <p>
 <a id="part3"><h3>3. Summary</h3></a>
 <p>
-You only need to do the 1st part and do what you usually do to migrate a VM. You may see the qemu document to learn how to migrate a VM. 
+You only need to do the 1st part and do what you usually do to migrate a VM. You may see the qemu document to learn how to migrate a VM. Check out this  https://github.com/kasidit/runQemu link if you want to see some basic commands on how to run qemu. 
