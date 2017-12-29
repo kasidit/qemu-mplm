@@ -65,7 +65,7 @@ $ ../configure --enable-kvm --prefix=/home/kasidit/qemu-mplm-bin --target-list=x
 $ make
 $ sudo make install
 </pre>
-Now, you have a new qemu that can do MPLM migration. The MPLM already replaces the pre-copy mechanism at this point. You can use the same method as the traditional pre-copy mechanism to migrate a VM. 
+Now, you have a new qemu that can do MPLM migration. Our code already replaces the pre-copy mechanism. You can migrate a VM using use the same method to that of the pre-copy. 
 <p>
 <a id="part2"><h3>2. Rum VMs and perform a migration</h3></a>
 <p><p>  
