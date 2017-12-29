@@ -32,6 +32,7 @@ This software is provided for educational purposes. Please refer to the official
 <p>
  <i><a id="prepare"><h4>1.1 Prepre dependency</h4></a></i>
 <p> 
+I am doing this on Ubuntu 16.04 server (64 bits). 
 <pre>
 $ sudo apt-get update
 $ sudo apt-get install libglib2.0-dev libfdt-dev libpixman-1-dev zlib1g-dev libaio-dev libbluetooth-dev
@@ -43,11 +44,27 @@ $ sudo apt-get install libsnappy-dev libssh2-1-dev libvde-dev libvdeplug-dev lib
  <i><a id="configure"><h4>1.2 Configure</h4></a></i>
 <p> 
 <pre>
-$ 
+$ git clone https://github.com/kasidit/qemu-mplm
+$ cd qemu-mplm
+$ mkdir build
+$ cd build
+</pre>
+I am goint to install the binary at create /home/kasidit/qemu-mplm-bin directory. 
+<pre>
+$ mkdir /home/kasidit/qemu-mplm-bin
+</pre>
+Next. I am going to configure parameters for the installation. Basically, I am going to install KVM-enabled qemu software for x86_64-softmmu and x86_64-linux-user architectures. The installation directory will be at /home/kasidit/qemu-mplm-bin.
+<pre>
+$ ../configure -h
+$ ../configure --enable-kvm --prefix=/home/kasidit/qemu-mplm-bin --target-list=x86_64-softmmu,x86_64-linux-user
 </pre>
  <p>
  <i><a id="make"><h4>1.3 Compile and install</h4></a></i>
 <p>
+<pre>
+$ make
+$ sudo make install
+</pre>
 <p>
 <a id="part2"><h3>2. Rum VMs and perform a migration</h3></a>
 <p><p>  
