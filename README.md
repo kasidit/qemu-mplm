@@ -32,9 +32,19 @@ This software is provided for educational purposes. Please refer to the official
 <p>
  <i><a id="prepare"><h4>1.1 Prepre dependency</h4></a></i>
 <p> 
+<pre>
+$ sudo apt-get update
+$ sudo apt-get install libglib2.0-dev libfdt-dev libpixman-1-dev zlib1g-dev libaio-dev libbluetooth-dev
+$ sudo apt-get install libbrlapi-dev libbz2-dev  libcap-dev libcap-ng-dev libcurl4-gnutls-dev libgtk-3-dev libibverbs-dev libjpeg8-dev
+$ sudo apt-get install libncurses5-dev libnuma-dev librbd-dev librdmacm-dev libsasl2-dev libsdl1.2-dev libseccomp-dev
+$ sudo apt-get install libsnappy-dev libssh2-1-dev libvde-dev libvdeplug-dev libvte-dev libxen-dev liblzo2-dev valgrind xfslibs-dev
+</pre>
 <p>
  <i><a id="configure"><h4>1.2 Configure</h4></a></i>
 <p> 
+<pre>
+$ 
+</pre>
  <p>
  <i><a id="make"><h4>1.3 Compile and install</h4></a></i>
 <p>
