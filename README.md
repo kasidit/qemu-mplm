@@ -83,7 +83,7 @@ Formatting 'ubuntu1604qcow2.img', fmt=qcow2 size=8589934592 encryption=off clust
 $
 </pre>
 I basically create an image directory, retrieve ISO image of ubuntu 16.04 server from internet, and create a qcow2 image for VM image installation. 
-<p>
+<p><p>
 Next, I am going to run a VM to install ubuntu 16.04 on the ubuntu1604qcow2.img image file.
 <pre>
 $ sudo /home/kasidit/qemu-mplm-bin/bin/qemu-system-x86_64 -enable-kvm -cpu host -smp 2 -m 2G \
@@ -92,11 +92,18 @@ $ sudo /home/kasidit/qemu-mplm-bin/bin/qemu-system-x86_64 -enable-kvm -cpu host 
 [1] 29616
 $
 </pre>
-Next, I am going to invoke the tightVNC viewer client program on my notebook and enter the IP address of the server with VNC port 95 as VNC server URL. After the VNC screen shows up, I will install ubuntu 16.04 and we will continue in the next section. 
+Next, I am going to invoke the tightVNC viewer client program on my notebook and enter the IP address of the server with VNC port 95 as VNC server URL. After the VNC screen shows up, I will install ubuntu 16.04 and we will continue in the next section. When finish the installation, you can terminate the VM using the following command on the host machine. 
+<pre>
+$ echo quit | nc localhost 9666
+</pre>
+I am going to run the VM again with the command below. Then, I am going to log in to the VM via the VNC client as before. 
+<pre>
+$ 
+</pre>
 <p>
 <i><a id="destVM"><h4>2.1 Run a destination VM to wait for VM state</h4></a></i>
 <p> 
-TBA
+Now, I have 
 <p>
 <i><a id="srcVM"><h4>2.2 Run a source VM</h4></a></i>
 <p>
