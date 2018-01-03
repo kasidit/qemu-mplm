@@ -16,8 +16,8 @@ This software is provided for educational purposes. Please refer to the official
       </ul>
  <li> <a href="#part2">2. Run and Migrate VMs</a> 
       <ul>
-       <li> <a id="#createVM">2.1 Create a VM</a>
-       <li> <a id="#installAppOnVM">2.2 Install NPB on the VM</a>
+       <li> <a href="#createVM">2.1 Create a VM</a>
+       <li> <a href="#installAppOnVM">2.2 Install NPB on the VM</a>
        <li> <a href="#destVM">2.3 Run a destination VM to wait for VM state</a>
        <li> <a href="#srcVM">2.4 Run a source VM</a>
        <li> <a href="#migVM">2.5 Perform a migration</a> 
@@ -97,9 +97,9 @@ Next, I am going to invoke the tightVNC viewer client program on my notebook and
 <pre>
 $ echo quit | nc localhost 9666
 </pre>
-I am going to run the VM again with the command below. Then, I am going to log in to the VM via the VNC client as before. 
+I am going to run the VM again with the command below. Notice that the memory size has been changed to 16GB. 
 <pre>
-$ sudo /home/kasidit/qemu-mplm-bin/bin/qemu-system-x86_64 -enable-kvm -cpu host -smp 2 -m 2G \
+$ sudo /home/kasidit/qemu-mplm-bin/bin/qemu-system-x86_64 -enable-kvm -cpu host -smp 2 <b>-m 16G</b> \
 >  -drive file=ubuntu1604qcow2.img,format=qcow2 -boot c -vnc :95 -net nic -net user \
 >  -monitor tcp::9666,server,nowait -localtime &
 $
@@ -107,7 +107,8 @@ $
 <p>
 <i><a id="installAppOnVM"><h4>2.2 Install NPB on the VM</h4></a></i>
 <p>
-After loggin into the VM I will install the <a href="https://www.nas.nasa.gov/publications/npb.html">NAS Parallel Benchmark (NPB) benchmark</a> suite on it. Supposed that the VM has a command prompt "vm$>", we use the following commands to do so. 
+Next, I am going to log in to the VM via the VNC client. 
+After loggin into the VM, I will install the <a href="https://www.nas.nasa.gov/publications/npb.html">NAS Parallel Benchmark (NPB) benchmark</a> software on it. Supposed that the VM has a command prompt "vm$>", we use the following commands to do so. 
 <pre>
 vm$> sudo sed -i "s/us.arch/th.arch/g" /etc/apt/sources.list
 vm$> sudo apt-get update 
@@ -117,7 +118,7 @@ vm$> gzip -d NPB3.3.1.tar.gz
 vm$> tar xvf NPB3.3.1.tar
 vm$> 
 </pre>
-Next, we will install the software.... SOON 
+Next, we will install the NPB software.... SOON 
 <p>
 <i><a id="destVM"><h4>2.3 Run a destination VM to wait for VM state</h4></a></i>
 <p> 
