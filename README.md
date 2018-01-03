@@ -14,11 +14,13 @@ This software is provided for educational purposes. Please refer to the official
        <li> <a href="#configure">1.2 Configure</a>
        <li> <a href="#make">1.3 Compile and install</a>
       </ul>
- <li> <a href="#part2">2. Rum VMs and perform a migration</a> 
+ <li> <a href="#part2">2. Run and Migrate VMs</a> 
       <ul>
-       <li> <a href="#destVM">2.1 Run a destination VM to wait for VM state</a>
-       <li> <a href="#srcVM">2.2 Run a source VM</a>
-       <li> <a href="#migVM">2.3 Perform a migration </a> 
+       <li> <a id="#createVM">2.1 Create a VM</a>
+       <li> <a id="#installAppOnVM">2.2 Install NPB on the VM</a>
+       <li> <a href="#destVM">2.3 Run a destination VM to wait for VM state</a>
+       <li> <a href="#srcVM">2.4 Run a source VM</a>
+       <li> <a href="#migVM">2.5 Perform a migration</a> 
       </ul>
  <li><a href="#part3">3. Summary</a>
 </ul>
@@ -55,7 +57,7 @@ $ ../configure -h
 $ ../configure --enable-kvm --prefix=/home/kasidit/qemu-mplm-bin --target-list=x86_64-softmmu,x86_64-linux-user
 </pre>
  <p>
- <i><a id="make"><h4>1.3 Compile and install</h4></a></i>
+ <i><a id="make"><h4>1.3 Compile and install qemu-mplm</h4></a></i>
 <p>
 <pre>
 $ make
@@ -63,8 +65,11 @@ $ sudo make install
 </pre>
 Now, you have a new qemu that can do MPLM migration. MPLM already replaces the pre-copy. You can perform a migration with MPLM in the same way you do with pre-copy mechanism. 
 <p>
-<a id="part2"><h3>2. Rum VMs and perform a migration</h3></a>
+<a id="part2"><h3>2. Run and Migrate VMs</h3></a>
 <p><p>
+<p>
+<i><a id="createVM"><h4>2.1 Create a VM</h4></a></i>
+<p> 
 First, I'm going to create a new ubuntu virtual machine image with the following commands. If you already have a VM image, you cam skip this part. 
 <pre>
 $ cd 
@@ -99,6 +104,9 @@ $ sudo /home/kasidit/qemu-mplm-bin/bin/qemu-system-x86_64 -enable-kvm -cpu host 
 >  -monitor tcp::9666,server,nowait -localtime &
 $
 </pre>
+<p>
+<i><a id="installAppOnVM"><h4>2.2 Install NPB on the VM</h4></a></i>
+<p>
 After loggin into the VM I will install the <a href="https://www.nas.nasa.gov/publications/npb.html">NAS Parallel Benchmark (NPB) benchmark</a> suite on it. Supposed that the VM has a command prompt "vm$>", we use the following commands to do so. 
 <pre>
 vm$> sudo sed -i "s/us.arch/th.arch/g" /etc/apt/sources.list
@@ -109,17 +117,17 @@ vm$> gzip -d NPB3.3.1.tar.gz
 vm$> tar xvf NPB3.3.1.tar
 vm$> 
 </pre>
-Next, we will install the software. 
+Next, we will install the software.... SOON 
 <p>
-<i><a id="destVM"><h4>2.1 Run a destination VM to wait for VM state</h4></a></i>
+<i><a id="destVM"><h4>2.3 Run a destination VM to wait for VM state</h4></a></i>
 <p> 
-Now, I have 
+Now, I have... SOON 
 <p>
-<i><a id="srcVM"><h4>2.2 Run a source VM</h4></a></i>
+<i><a id="srcVM"><h4>2.4 Run a source VM</h4></a></i>
 <p>
 TBA
 <p>
-<i><a id="migVM"><h4>2.3 Perform a migration</h4></a></i>
+<i><a id="migVM"><h4>2.5 Perform an MPLM migration</h4></a></i>
 <p>
 TBA
 <p>
