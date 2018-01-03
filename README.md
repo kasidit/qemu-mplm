@@ -65,10 +65,28 @@ $ ../configure --enable-kvm --prefix=/home/kasidit/qemu-mplm-bin --target-list=x
 $ make
 $ sudo make install
 </pre>
-Now, you have a new qemu that can do MPLM migration. Our code already replaces the pre-copy mechanism. You can migrate a VM using use the same method to that of the pre-copy. 
+Now, you have a new qemu that can do MPLM migration. MPLM already replaces the pre-copy. You can perform a migration with MPLM in the same way you do with pre-copy mechanism. 
 <p>
 <a id="part2"><h3>2. Rum VMs and perform a migration</h3></a>
-<p><p>  
+<p><p>
+First, I'm going to create a new ubuntu virtual machine image with the following commands. If you already have a VM image, you cam skip this part. 
+<pre>
+$ cd 
+$ mkdir images
+$ cd images
+$ wget http:... // get the ubuntu server image
+$ ls 
+ubuntu-16.04.3-server-amd64.iso
+$
+$ qemu-img create -f qcow2 ubuntu1604qcow2.img 8G
+Formatting 'ubuntu1604qcow2.img', fmt=qcow2 size=8589934592 encryption=off cluster_size=65536 lazy_refcounts=off refcount_bits=16
+$
+</pre>
+I basically create an image directory, retrieve ISO image of ubuntu 16.04 server from internet, and create a qcow2 image for VM image installation. 
+<p>
+Next, I am going to run a VM to install ubuntu 16.04 on the ubuntu1604qcow2.img image file.
+<pre>
+</pre>
 <p>
 <i><a id="destVM"><h4>2.1 Run a destination VM to wait for VM state</h4></a></i>
 <p> 
