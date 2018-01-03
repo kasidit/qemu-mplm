@@ -1,4 +1,4 @@
-# qemu-mplm: A modified QEMU 2.9.0 software to support Memory-bounded Pre-copy Live Migration (MPLM) of Virtual Machines
+# Memory-bounded Pre-copy Live Migration (MPLM) of Virtual Machines
 <p><p>
 Kasidit Chanchio <br>
 Contact: kasiditchanchio@gmail.com <br>
@@ -6,9 +6,9 @@ Department of computer science <br>
 Faculty of science and technology <br>
 Thammasat University.
 <p>
-This software is provided for educational purposes. Please refer to the official QEMU software at https://www.qemu.org/ for more information about qemu.    
+Memory-bound Pre-copy Live Migration (MPLM) is a novel pre-copy migration mechanism that overlap VM computation and VM state transfer in a best-effort manner. We implement MPLM in a modified version of QEMU 2.9.0, namely <b>qemu-mplm</b>, available at this web site. This software is provided mainly for educational purposes. Please refer to the official QEMU software at https://www.qemu.org/ for more information about qemu.    
 <ul>
- <li> <a href="#part1">1. Compilation</a>
+ <li> <a href="#part1">1. Compile qemu-mplm</a>
       <ul>
        <li> <a href="#prepare">1.1 Prerequisites</a>
        <li> <a href="#configure">1.2 Configure</a>
