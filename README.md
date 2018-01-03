@@ -1,16 +1,12 @@
-# qemu-mplm
-
-
+# qemu-mplm: A modified QEMU 2.9.0 software to support Memory-bounded Pre-copy Live Migration (MPLM) of Virtual Machines
+<p><p>
 Kasidit Chanchio <br>
 Contact: kasiditchanchio@gmail.com <br>
 Department of computer science <br>
 Faculty of science and technology <br>
 Thammasat University.
-
 <p>
-<h2>A modified QEMU 2.9.0 software to support Memory-bounded Pre-copy Live Migration (MPLM) of Virtual Machines</h2> <br>
-<p>
-This software is provided for educational purposes. Please refer to the official QEMU software at https://www.qemu.org/.    
+This software is provided for educational purposes. Please refer to the official QEMU software at https://www.qemu.org/ for more information about qemu.    
 <ul>
  <li> <a href="#part1">1. Compilation</a>
       <ul>
