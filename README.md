@@ -98,8 +98,22 @@ $ echo quit | nc localhost 9666
 </pre>
 I am going to run the VM again with the command below. Then, I am going to log in to the VM via the VNC client as before. 
 <pre>
-$ 
+$ sudo /home/kasidit/qemu-mplm-bin/bin/qemu-system-x86_64 -enable-kvm -cpu host -smp 2 -m 2G \
+>  -drive file=ubuntu1604qcow2.img,format=qcow2 -boot c -vnc :95 -net nic -net user \
+>  -monitor tcp::9666,server,nowait -localtime &
+$
 </pre>
+After loggin into the VM I will install the <a href="https://www.nas.nasa.gov/publications/npb.html">NAS Parallel Benchmark (NPB) benchmark</a> suite on it. Supposed that the VM has a command prompt "vm$>", we use the following commands to do so. 
+<pre>
+vm$> sudo sed -i "s/us.arch/th.arch/g" /etc/apt/sources.list
+vm$> sudo apt-get update 
+vm$> sudo apt-get install gcc gfortran
+vm$> wget https://www.nas.nasa.gov/assets/npb/NPB3.3.1.tar.gz
+vm$> gzip -d NPB3.3.1.tar.gz
+vm$> tar xvf NPB3.3.1.tar
+vm$> 
+</pre>
+Next, we will install the software. 
 <p>
 <i><a id="destVM"><h4>2.1 Run a destination VM to wait for VM state</h4></a></i>
 <p> 
