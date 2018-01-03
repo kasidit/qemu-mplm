@@ -12,13 +12,13 @@ Thammasat University.
 <p>
 This software is provided for educational purposes. Please refer to the official QEMU software at https://www.qemu.org/.    
 <ul>
- <li> 1. <a href="#part1">1. Compilation</a>
+ <li> <a href="#part1">1. Compilation</a>
       <ul>
        <li> <a href="#prepare">1.1 Prerequisites</a>
        <li> <a href="#configure">1.2 Configure</a>
        <li> <a href="#make">1.3 Compile and install</a>
       </ul>
- <li> 2. <a href="#part2">2. Rum VMs and perform a migration</a> 
+ <li> <a href="#part2">2. Rum VMs and perform a migration</a> 
       <ul>
        <li> <a href="#destVM">2.1 Run a destination VM to wait for VM state</a>
        <li> <a href="#srcVM">2.2 Run a source VM</a>
