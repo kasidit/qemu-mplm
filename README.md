@@ -45,14 +45,14 @@ $ sudo apt-get install libsnappy-dev libssh2-1-dev libvde-dev libvdeplug-dev lib
 $ git clone https://github.com/kasidit/qemu-mplm
 $ cd qemu-mplm
 $ mkdir build
-$ cd build
 </pre>
-I am goint to install the binary at create /home/kasidit/qemu-mplm-bin directory. 
+Next, we create a directory for qemu-mplm installation.  
 <pre>
 $ mkdir /home/kasidit/qemu-mplm-bin
 </pre>
-Next. I am going to configure parameters for the installation. Basically, I am going to install KVM-enabled qemu software for x86_64-softmmu and x86_64-linux-user architectures. The installation directory will be at /home/kasidit/qemu-mplm-bin.
+Next, I am going to install KVM-enabled qemu software for x86_64-softmmu and x86_64-linux-user architectures. The installation directory is /home/kasidit/qemu-mplm-bin.
 <pre>
+$ cd build
 $ ../configure -h
 $ ../configure --enable-kvm --prefix=/home/kasidit/qemu-mplm-bin --target-list=x86_64-softmmu,x86_64-linux-user
 </pre>
@@ -63,9 +63,9 @@ $ ../configure --enable-kvm --prefix=/home/kasidit/qemu-mplm-bin --target-list=x
 $ make
 $ sudo make install
 </pre>
-Now, you have a new qemu that can do MPLM migration. MPLM already replaces the pre-copy. You can perform a migration with MPLM in the same way you do with pre-copy mechanism. 
+Now, we have a new qemu hypervisor for MPLM migration installed. In qemu-mplm, the traditional pre-copy mechanism is replaced by MPLM. You can perform an MPLM migration same way you operate pre-copy migration in regular QEMU software. 
 <p>
-<a id="part2"><h3>2. Run and Migrate VMs</h3></a>
+<a id="part2"><h3>2. Create, Run, and Migrate a VM</h3></a>
 <p><p>
 <p>
 <i><a id="createVM"><h4>2.1 Create a VM</h4></a></i>
