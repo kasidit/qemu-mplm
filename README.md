@@ -63,7 +63,7 @@ $ ../configure --enable-kvm --prefix=/home/kasidit/qemu-mplm-bin --target-list=x
 $ make
 $ sudo make install
 </pre>
-Now, we have a new qemu hypervisor for MPLM migration installed. In qemu-mplm, the traditional pre-copy mechanism is replaced by MPLM. You can perform an MPLM migration same way you operate pre-copy migration in regular QEMU software. 
+Now, we have a new qemu hypervisor for MPLM migration installed. In qemu-mplm, the traditional pre-copy mechanism is replaced by MPLM. You can perform an MPLM migration the same way you operate pre-copy migration in QEMU; however, you <b>DO NOT</b> have to provide (or estimate) <b>the maximum tolerable downtime parameter</b> for the migration. The MPLM mechanism eliminates the needs for this parameter and enables automatic migration.     
 <p>
 <a id="part2"><h3>2. Create, Run, and Migrate a VM</h3></a>
 <p><p>
