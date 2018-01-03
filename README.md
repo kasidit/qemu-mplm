@@ -14,7 +14,7 @@ This software is provided for educational purposes. Please refer to the official
 <ul>
  <li> 1. <a href="#part1">1. Compilation</a>
       <ul>
-       <li> <a href="#prepare">1.1 Prepre dependency</a>
+       <li> <a href="#prepare">1.1 Prerequisites</a>
        <li> <a href="#configure">1.2 Configure</a>
        <li> <a href="#make">1.3 Compile and install</a>
       </ul>
@@ -30,7 +30,7 @@ This software is provided for educational purposes. Please refer to the official
 <a id="part1"><h3>1. Compilation</h3></a>
 <p><p>
 <p>
- <i><a id="prepare"><h4>1.1 Prepre dependency</h4></a></i>
+ <i><a id="prepare"><h4>1.1 Prerequisites</h4></a></i>
 <p> 
 I am doing this on Ubuntu 16.04 server (64 bits). 
 <pre>
