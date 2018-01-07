@@ -98,9 +98,9 @@ Next, I am going to invoke the tightVNC viewer client program on my notebook and
 <pre>
 $ echo quit | nc localhost 9666
 </pre>
-I am going to run the VM again with the command below. Notice that the memory size has been changed to 16GB. 
+I am going to run the VM again with the command below. Notice that we set vcpu cores to 4 and memory size to 16GB. 
 <pre>
-$ sudo /home/kasidit/qemu-mplm-bin/bin/qemu-system-x86_64 -enable-kvm -cpu host -smp 2 <b>-m 16G</b> \
+$ sudo /home/kasidit/qemu-mplm-bin/bin/qemu-system-x86_64 -enable-kvm -cpu host -smp 4 <b>-m 16G</b> \
 >  -drive file=/home/kasidit/images/ubuntu1604qcow2.img,format=qcow2 -boot c -vnc :95 -net nic -net user \
 >  -monitor tcp::9666,server,nowait -localtime &
 $
@@ -131,6 +131,9 @@ a list of pairs of application name and class of data users want to build. Fortu
 provide examples make.def and suite.def for various systems and bechmark selections for us in 
 the $HOME/NPB3.3.1/NPB3.3-OMP/config/NAS.sample/ directory. We can just copy them to $HOME/NPB3.3.1/NPB3.3-OMP/config.
 <pre>
+vm$> pwd
+$HOME/NPB3.3.1/NPB3.3-OMP/config
+vm$>
 vm$> cp NAS.samples/make.def.gcc_x86 make.def
 vm$> cp NAS.samples/suite.def.bt suite.def
 </pre>
@@ -138,13 +141,26 @@ Then, we compile the openMP version of the BT kernel. In the example suite.def a
 programs. They are the BT Class A, B, C, D, S, W. The binaries would be stored in the $HOME/NPB3.3.1/NPB3.3-OMP/bin 
 directory. 
 <pre>
-$ make
+vm$> cd $HOME/NPB3.3.1/NPB3.3-OMP
+vm$> sudo apt install make
+vm$> 
+vm$> make suite
 ...
-$ ls bin
+vm$> ls bin
 bt.A.x bt.B.x bt.C.x ...
-$
+vm$>
 </pre>
-Now, we have the application workloads that will execute on VMs during the migration experiments. 
+We will repeat similar steps to compile the SP benchmarks below. 
+<pre>
+vm$> cd config
+vm$> cp NAS.samples/suite.def.sp suite.def
+vm$> cd ..
+vm$> make suite
+...
+vm$>
+</pre>
+</pre>
+Now, we have the BT and SP application workloads that will be executed during the migration experiments. 
 <p>
 <i><a id="destVM"><h4>2.3 Run a destination VM to wait for VM state</h4></a></i>
 <p> 
