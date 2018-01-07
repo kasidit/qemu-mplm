@@ -968,6 +968,9 @@ int              mplm_nondirty_pages_allot = 50;
 int64_t 	checked_mplm_nondirty_sent;
 int64_t 	checked_mplm_dirty_sent;
 
+int64_t 	real_mplm_nondirty_sent;
+int64_t 	real_mplm_dirty_sent;
+
 // MPLM
 extern int 	mplm_bitmap_sync_flag;
 extern int 	mplm_live_migration_stage_finish;
@@ -1253,6 +1256,9 @@ MigrationState *migrate_init(const MigrationParams *params)
 
     checked_mplm_nondirty_sent = 0;
     checked_mplm_dirty_sent = 0;
+
+    real_mplm_nondirty_sent = 0;
+    real_mplm_dirty_sent = 0;
 
 // MPLM
     mplm_bitmap_sync_flag = 0;
@@ -2147,18 +2153,31 @@ static void *migration_thread(void *opaque)
                 trace_migration_thread_low_pending(pending_size);
 // MPLM checking
                 if(mplm_type == MPLM_TWO_QUEUES){
-                  if((checked_mplm_nondirty_sent != 0) || 
-                      (checked_mplm_dirty_sent != 0)){
+                  if((checked_mplm_nondirty_sent != 0) || (checked_mplm_dirty_sent != 0)){
                     double nondirty_percents = 0.0; 
                     nondirty_percents = (double)(checked_mplm_nondirty_sent)/
 		      (double)(checked_mplm_dirty_sent+checked_mplm_nondirty_sent);
-       		    printf(" nondirty sent= %"PRId64" dirty sent=%"PRId64 " nondirty is %lf \n", 
+       		    printf(" nondirty FSM checked= %"PRId64" dirty FSM checked=%"PRId64 " nondirty FSM Checked Percents is %lf \n", 
                       checked_mplm_nondirty_sent, checked_mplm_dirty_sent, nondirty_percents);
         	    fflush(stdout);
                   }
                   else{
-       		    printf(" ERROR: nondirty sent= %"PRId64" dirty sent=%"PRId64 " \n", 
+       		    printf(" ERROR: nondirty FSM checked= %"PRId64" dirty FSM checked=%"PRId64 " \n", 
                                checked_mplm_nondirty_sent, checked_mplm_dirty_sent);
+        	    fflush(stdout);
+                  }
+
+                  if((real_mplm_nondirty_sent != 0) || (real_mplm_dirty_sent != 0)){
+                    double nondirty_real_percents = 0.0; 
+                    nondirty_real_percents = (double)(real_mplm_nondirty_sent)/
+		      (double)(real_mplm_dirty_sent+real_mplm_nondirty_sent);
+       		    printf(" nondirty FSM real= %"PRId64" dirty FSM real=%"PRId64 " nondirty FSM real Percents is %lf \n", 
+                      real_mplm_nondirty_sent, real_mplm_dirty_sent, nondirty_real_percents);
+        	    fflush(stdout);
+                  }
+                  else{
+       		    printf(" ERROR: nondirty FSM real= %"PRId64" dirty FSM real=%"PRId64 " \n", 
+                               real_mplm_nondirty_sent, real_mplm_dirty_sent);
         	    fflush(stdout);
                   }
                 }

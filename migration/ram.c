@@ -72,6 +72,9 @@ extern int		mplm_nondirty_pages_allot;
 extern int64_t         checked_mplm_nondirty_sent;
 extern int64_t         checked_mplm_dirty_sent;
 
+extern int64_t         real_mplm_nondirty_sent;
+extern int64_t         real_mplm_dirty_sent;
+
 int64_t  check_mplm_nondirty_sents = 0;
 int64_t  check_mplm_dirty_sents = 0;
 
@@ -747,6 +750,11 @@ static void mplm_migration_bitmap_sync_range(int first_sync, ram_addr_t start, r
     bitmap = atomic_rcu_read(&migration_bitmap_rcu)->bmap;
     nondirtybitmap = atomic_rcu_read(&migration_bitmap_rcu)->nondirtybmap;
 
+    // 
+    // migration_dirty_pages represents the pre-copy dirty pages. We still use this for pre-copy's 
+    // ending condition. MPLM dirty page counts are represented by the mplm_num_nondirty_pages 
+    // and current_num_nondirty_pages variables. 
+    //
     if(first_sync){
         migration_dirty_pages += mplm_first_cpu_physical_memory_sync_dirty_bitmap(
     								bitmap, 
@@ -1813,11 +1821,15 @@ static int ram_find_and_save_block(QEMUFile *f, bool last_stage,
                   pages = ram_save_host_page(ms, f, &pss,
                                        last_stage, bytes_transferred,
                                        dirty_ram_abs);
+
+		  if(pages != 0) real_mplm_dirty_sent++; 
               }
               else{ // send a nondirty page
                   pages = ram_save_host_page(ms, f, &npss,
                                        last_stage, bytes_transferred,
                                        dirty_ram_abs);
+
+		  if(pages != 0) real_mplm_nondirty_sent++; 
               }
           }
 
@@ -1855,6 +1867,8 @@ static int ram_find_and_save_block(QEMUFile *f, bool last_stage,
               pages = ram_save_host_page(ms, f, &pss,
                                        last_stage, bytes_transferred,
                                        dirty_ram_abs);
+
+	      if(pages != 0) real_mplm_dirty_sent++; 
           }
       } while (!pages && again);
 
