@@ -110,7 +110,7 @@ I recommend creating shell scripts for these commands.
 <i><a id="installAppOnVM"><h4>2.2 Install NPB on the VM</h4></a></i>
 <p>
 Next, I am going to log in to the VM via the VNC client. 
-After loggin into the VM, we will install the <a href="https://www.nas.nasa.gov/publications/npb.html">NAS Parallel Benchmark (NPB) benchmark</a> on it. Assuming "vm$>" is the VM's command line prompt, we compile NPB with commands below.  
+After loggin into the VM, we will install the <a href="https://www.nas.nasa.gov/publications/npb.html">NAS Parallel Benchmark (NPB) benchmark</a> on it. Assuming "vm$>" is the VM's command line prompt, we compile the OpenMP version of the kernel BT of the NAS benchmark with commands below.  
 <pre>
 vm$> sudo sed -i "s/us.arch/th.arch/g" /etc/apt/sources.list
 vm$> sudo apt-get update 
@@ -118,9 +118,33 @@ vm$> sudo apt-get install gcc gfortran
 vm$> wget https://www.nas.nasa.gov/assets/npb/NPB3.3.1.tar.gz
 vm$> gzip -d NPB3.3.1.tar.gz
 vm$> tar xvf NPB3.3.1.tar
-vm$> cd 
+vm$> cd NPB3.3.1
+vm$> cd NPB3.3-OMP
+vm$> cd config
+vm$> 
 </pre>
-Next, we will install the NPB software.... SOON 
+We first obtain source codes of the NPB software from NASA website and then extract it. 
+Next, we change directory to $HOME/NPB3.3.1/NPB3.3-OMP/config. We will build the applications using the Makefile here. 
+We have to create two files before using make utility to build application binaries. They are make.def and suite.def. 
+The make.def file defines the compilers and compilation options, while suite.def defines 
+a list of pairs of application name and class of data users want to build. Fortunately, the NPB authors have already 
+provide examples make.def and suite.def for various systems and bechmark selections for us in 
+the $HOME/NPB3.3.1/NPB3.3-OMP/config/NAS.sample/ directory. We can just copy them to $HOME/NPB3.3.1/NPB3.3-OMP/config.
+<pre>
+vm$> cp NAS.samples/make.def.gcc_x86 make.def
+vm$> cp NAS.samples/suite.def.bt suite.def
+</pre>
+Then, we compile the openMP version of the BT kernel. In the example suite.def above, we will build 6 BT benchmark 
+programs. They are the BT Class A, B, C, D, S, W. The binaries would be stored in the $HOME/NPB3.3.1/NPB3.3-OMP/bin 
+directory. 
+<pre>
+$ make
+...
+$ ls bin
+bt.A.x bt.B.x bt.C.x ...
+$
+</pre>
+Now, we have the application workloads that will execute on VMs during the migration experiments. 
 <p>
 <i><a id="destVM"><h4>2.3 Run a destination VM to wait for VM state</h4></a></i>
 <p> 
