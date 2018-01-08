@@ -157,13 +157,16 @@ vm$> cp NAS.samples/suite.def.sp suite.def
 vm$> cd ..
 vm$> make suite
 ...
+</pre>
+</pre>
+Now, we have the BT and SP applications installed. You can test both of them  using the following commands.
+<pre>
 vm$> ./bin/bt.B.x
 ...
-vm$> 
+vm$> ./bin/sp.A.x
+...
+vm$>
 </pre>
-</pre>
-Now, we have the BT and SP application workloads that will be executed during the migration experiments. You can test
-the bt.B.x application using the above command.  
 <p>
 <i><a id="destVM"><h4>2.3 Run a destination VM to wait for VM state</h4></a></i>
 <p> 
