@@ -167,10 +167,27 @@ vm$> ./bin/sp.A.x
 ...
 vm$>
 </pre>
+You can compile and run more benchmarks in the VMs as you wish. At this point, we are going to stop the VM for now. 
+<pre>
+$ echo quit | nc localhost 9666
+</pre>
 <p>
 <i><a id="destVM"><h4>2.3 Run a destination VM to wait for VM state</h4></a></i>
 <p> 
-Now, I have... SOON 
+In this section, we are going to setup another host computer to be a destination computer. First, we follows instructions in section 1 to prepare and compile qemu-mplm software on the destination host. Next, we will copy the image file from the source host to destination host. Supposed that the IP address of the destination host is DestIP and the login account there is kasidit, we will use the following commnads to do so. 
+<p><p>
+ <b>On the destination host:</b>
+<pre>
+$ mkdir /home/kasidit/images
+$ 
+</pre>
+<p><p>
+ <b>On the source host:</b>
+<pre>
+$ cd /home/kasidit/images
+$ scp ubuntu1604qcow2.img kasidit@DestIP:/home/kasidit/images
+$
+</pre>
 <p>
 <i><a id="srcVM"><h4>2.4 Run a source VM</h4></a></i>
 <p>
