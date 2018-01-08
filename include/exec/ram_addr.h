@@ -427,12 +427,6 @@ uint64_t mplm_first_cpu_physical_memory_sync_dirty_bitmap(unsigned long *dest,
     uint64_t num_dirty = 0;
     // MPLM
     uint64_t num_new_dirty = 0;
-//int assertfirstflg = 0; 
-    // MPLM
-    //uint64_t checked_dirty_pages = 0; 
-    //uint64_t checked_nondirty_pages = 0; 
-    //uint64_t checked_error_uncleared_sent = 0; 
-    //uint64_t checked_dirtied_sent = 0; 
 
     unsigned long current_dirty;
     unsigned long current_nondirty;
@@ -479,34 +473,6 @@ uint64_t mplm_first_cpu_physical_memory_sync_dirty_bitmap(unsigned long *dest,
         }
 
         rcu_read_unlock();
-/*
-printf("Allign (First Round)\n"); 
-printf(" ----> real dirty pages: %" PRId64 ":num dirty pages: %" PRId64 " \n \
- ----> mplm nondirt %" PRId64" \n", 
-  *real_dirty_pages, num_dirty, *mplm_nondirty_pages); 
-fflush(stdout); 
-
-        for (k = page; k < page + nr; k++) {
-                unsigned long new_dirty;
-                unsigned long new_nondirty;
-                new_dirty = dest[k];
-                new_nondirty = nondirtydest[k]; // fix this
-
-                checked_dirty_pages += ctpopl(new_dirty & ~(new_nondirty));
-                checked_nondirty_pages += ctpopl(new_dirty & new_nondirty);
-
-                checked_error_uncleared_sent = ctpopl(~(new_dirty) & new_nondirty); 
-                checked_dirtied_sent += ctpopl(~(new_dirty) & ~(new_nondirty));
-        }
-
-printf("Checked (First Round) Allign \n \
- ----> checked dirty pages(1,0)= %" PRId64 ":checked nondirty pages(1,1)= %" PRId64 "\n \
-:checked uncleared sent pages(0,1)=ERROR  %" PRId64":checked dirtied sent(0,0)= %" PRId64 " \n \
-:Total = %" PRId64 " \n",
-  checked_dirty_pages, checked_nondirty_pages, checked_error_uncleared_sent, checked_dirtied_sent,
-(checked_dirty_pages+checked_nondirty_pages+checked_error_uncleared_sent+checked_dirtied_sent)); 
-fflush(stdout); 
-*/
     } else {
 // MPLM
         for (addr = 0; addr < length; addr += TARGET_PAGE_SIZE) {
@@ -516,7 +482,7 @@ fflush(stdout);
                         TARGET_PAGE_SIZE,
                         DIRTY_MEMORY_MIGRATION)) {
                 *real_dirty_pages += 1;
-                //long k = (start + addr) >> TARGET_PAGE_BITS;
+
                 if (!test_and_set_bit(k, dest)) {
                     num_dirty++;
                 }
@@ -530,37 +496,6 @@ fflush(stdout);
                 (*cur_num_nondirty_pages)++;
             }
         }
-/*
-printf("Not Allign (First Round)\n"); 
-printf(" ----> real dirty pages: %" PRId64 ":num dirty pages: %" PRId64 " \n \
- ----> mplm nondirt %" PRId64" \n", 
-  *real_dirty_pages, num_dirty, *mplm_nondirty_pages); 
-fflush(stdout); 
-
-        for (addr = 0; addr < length; addr += TARGET_PAGE_SIZE) {
-                long k = (start + addr) >> TARGET_PAGE_BITS;
-                if (test_bit(k, dest) && !test_bit(k, nondirtydest)) {
-                    checked_dirty_pages++;
-                }
-                if (test_bit(k, dest) && test_bit(k, nondirtydest)) {
-                    checked_nondirty_pages++;
-                }
-                if (!test_bit(k, dest) && test_bit(k, nondirtydest)){
-                    checked_error_uncleared_sent++;
-                }
-                if (!test_bit(k, dest) && !test_bit(k, nondirtydest)){
-                    checked_dirtied_sent++;
-                }
-        }
-
-printf("Checked NOT Allign \n \
- ----> checked dirty pages(1,0)= %" PRId64 ":checked nondirty pages(1,1)= %" PRId64 "\n \
-:checked uncleared sent pages(0,1)=ERROR  %" PRId64":checked dirtied sent(0,0)= %" PRId64 " \n \
-:Total = %" PRId64 " \n",
-  checked_dirty_pages, checked_nondirty_pages, checked_error_uncleared_sent, checked_dirtied_sent,
-(checked_dirty_pages+checked_nondirty_pages+checked_error_uncleared_sent+checked_dirtied_sent)); 
-fflush(stdout); 
-*/
     }
 
     return num_dirty;
@@ -582,12 +517,8 @@ uint64_t mplm_next_cpu_physical_memory_sync_dirty_bitmap(unsigned long *dest,
     uint64_t num_dirty = 0;
     uint64_t sync_real_dirty_pages = 0; // number of real dirty page in this sync.
     uint64_t sync_nondirty_pages = 0;
-    // MPLM
-    //uint64_t checked_dirty_pages = 0; 
-    //uint64_t checked_nondirty_pages = 0; 
-    //uint64_t checked_error_uncleared_sent = 0; 
-    //uint64_t checked_dirtied_sent = 0; 
 
+    // MPLM
     unsigned long current_dirty;
     unsigned long current_nondirty;
 
@@ -640,36 +571,6 @@ uint64_t mplm_next_cpu_physical_memory_sync_dirty_bitmap(unsigned long *dest,
 
         *real_dirty_pages += sync_real_dirty_pages; 
         *mplm_nondirty_pages -= sync_nondirty_pages;
-/*
-printf("Allign page=%ld nr=%d \n \
- ----> sync real dirty pages= %" PRId64 ":accu real dirty pages= %" PRId64 " \n \
- ----> new dirty pages= %" PRId64 ":new nondirty pages= %" PRId64 ":existing nondirty pages= %" PRId64" \n", 
-  page, nr, 
-  sync_real_dirty_pages, *real_dirty_pages, num_dirty, sync_nondirty_pages, *mplm_nondirty_pages); 
-fflush(stdout); 
-// mplm verification
-
-        for (k = page; k < page + nr; k++) {
-                unsigned long new_dirty;
-                unsigned long new_nondirty;
-                new_dirty = dest[k];
-                new_nondirty = nondirtydest[k]; // fix this
-
-                checked_dirty_pages += ctpopl(new_dirty & ~(new_nondirty));
-                checked_nondirty_pages += ctpopl(new_dirty & new_nondirty);
-
-                checked_error_uncleared_sent = ctpopl(~(new_dirty) & new_nondirty); 
-                checked_dirtied_sent += ctpopl(~(new_dirty) & ~(new_nondirty));
-        }
-
-printf("Checked Allign \n \
- ----> checked dirty pages(1,0)= %" PRId64 ":checked nondirty pages(1,1)= %" PRId64 "\n \
-:checked uncleared sent pages(0,1)=ERROR  %" PRId64":checked dirtied sent(0,0)= %" PRId64 " \n \
-:Total = %" PRId64 " \n",
-  checked_dirty_pages, checked_nondirty_pages, checked_error_uncleared_sent, checked_dirtied_sent,
-(checked_dirty_pages+checked_nondirty_pages+checked_error_uncleared_sent+checked_dirtied_sent)); 
-fflush(stdout); 
-*/
     } else {
 // MPLM
         for (addr = 0; addr < length; addr += TARGET_PAGE_SIZE) {
@@ -695,38 +596,6 @@ fflush(stdout);
 
         *real_dirty_pages += sync_real_dirty_pages; 
         *mplm_nondirty_pages -= sync_nondirty_pages;
-/*
-printf("Not Allign page=%ld length=%"PRId64" \n \
- ----> sync real dirty pages= %" PRId64 ":accu real dirty pages= %" PRId64 " \n \
- ----> new dirty pages= %" PRId64 ":new nondirty pages= %" PRId64 ":existing nondirty pages= %" PRId64" \n", 
-  page, (uint64_t) length,  
-  sync_real_dirty_pages, *real_dirty_pages, num_dirty, sync_nondirty_pages, *mplm_nondirty_pages); 
-fflush(stdout); 
-
-        for (addr = 0; addr < length; addr += TARGET_PAGE_SIZE) {
-                long k = (start + addr) >> TARGET_PAGE_BITS;
-                if (test_bit(k, dest) && !test_bit(k, nondirtydest)) {
-                    checked_dirty_pages++;
-                }
-                if (test_bit(k, dest) && test_bit(k, nondirtydest)) {
-                    checked_nondirty_pages++;
-                }
-                if (!test_bit(k, dest) && test_bit(k, nondirtydest)){
-                    checked_error_uncleared_sent++;
-                }
-                if (!test_bit(k, dest) && !test_bit(k, nondirtydest)){
-                    checked_dirtied_sent++;
-                }
-        }
-
-printf("Checked NOT Allign \n \
- ----> checked dirty pages(1,0)= %" PRId64 ":checked nondirty pages(1,1)= %" PRId64 "\n \
-:checked uncleared sent pages(0,1)=ERROR  %" PRId64":checked dirtied sent(0,0)= %" PRId64 " \n \
-:Total = %" PRId64 " \n",
-  checked_dirty_pages, checked_nondirty_pages, checked_error_uncleared_sent, checked_dirtied_sent,
-(checked_dirty_pages+checked_nondirty_pages+checked_error_uncleared_sent+checked_dirtied_sent)); 
-fflush(stdout); 
-*/
     }
 
     return num_dirty;

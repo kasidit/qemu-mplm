@@ -1297,6 +1297,8 @@ void hmp_drive_mirror(Monitor *mon, const QDict *qdict)
 void hmp_set_mplm_migration(Monitor *mon, const QDict *qdict)
 {
     int64_t intervaltime = qdict_get_int(qdict, "intval");
+    // We define the default dirtypercents to 50. We will pass this value to qmp_set_mplm_migration
+    // even though no dirtypercent value is given from users. 
     int64_t dirtypercents = qdict_get_try_int(qdict, "dirtypercents", 50);
     bool disable = qdict_get_try_bool(qdict, "disable", false);
     bool firstnondirty = qdict_get_try_bool(qdict, "firstnondirty", false);
@@ -1316,7 +1318,6 @@ void hmp_set_mplm_migration(Monitor *mon, const QDict *qdict)
     }
 
     qmp_set_mplm_migration(!disable, firstnondirty, intervaltime, true, dirtypercents, &err);
-    //qmp_drive_mirror(&mirror, &err);
     hmp_handle_error(mon, &err);
 }
 
