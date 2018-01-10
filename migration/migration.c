@@ -1199,7 +1199,7 @@ MigrationState *migrate_init(const MigrationParams *params)
 
 // MPLM
     //char *mplm_str = NULL;
-    uint8_t local_debug_flag = 0;
+    uint8_t local_debug_flag = 1;
     /*
      * Reinitialise all migration state, except
      * parameters/capabilities that the user set, and
@@ -2210,6 +2210,37 @@ static void *migration_thread(void *opaque)
         	}
        		printf("<%d> mplm_bitmap_sync_interval = %"PRId64" ms \n", mplm_debug_i, mplm_bitmap_sync_interval);
         	fflush(stdout);
+
+                if(mplm_type == MPLM_TWO_QUEUES){
+                  if((checked_mplm_nondirty_sent != 0) || (checked_mplm_dirty_sent != 0)){
+                    double nondirty_percents = 0.0; 
+                    nondirty_percents = (double)(checked_mplm_nondirty_sent)/
+		      (double)(checked_mplm_dirty_sent+checked_mplm_nondirty_sent);
+       		    printf(" AFTER ITER nondirty FSM checked= %"PRId64" dirty FSM checked=%"PRId64 " nondirty FSM Checked Percents is %lf \n", 
+                      checked_mplm_nondirty_sent, checked_mplm_dirty_sent, nondirty_percents);
+        	    fflush(stdout);
+                  }
+                  else{
+       		    printf(" ERROR: nondirty FSM checked= %"PRId64" dirty FSM checked=%"PRId64 " \n", 
+                               checked_mplm_nondirty_sent, checked_mplm_dirty_sent);
+        	    fflush(stdout);
+                  }
+
+                  if((real_mplm_nondirty_sent != 0) || (real_mplm_dirty_sent != 0)){
+                    double nondirty_real_percents = 0.0; 
+                    nondirty_real_percents = (double)(real_mplm_nondirty_sent)/
+		      (double)(real_mplm_dirty_sent+real_mplm_nondirty_sent);
+       		    printf(" AFTER ITER nondirty FSM real= %"PRId64" dirty FSM real=%"PRId64 " nondirty FSM real Percents is %lf \n", 
+                      real_mplm_nondirty_sent, real_mplm_dirty_sent, nondirty_real_percents);
+        	    fflush(stdout);
+                  }
+                  else{
+       		    printf(" ERROR: nondirty FSM real= %"PRId64" dirty FSM real=%"PRId64 " \n", 
+                               real_mplm_nondirty_sent, real_mplm_dirty_sent);
+        	    fflush(stdout);
+                  }
+                }
+// MPLM checking end
         }
         if (current_time >= initial_time + BUFFER_DELAY) {
             uint64_t transferred_bytes = qemu_ftell(s->to_dst_file) -

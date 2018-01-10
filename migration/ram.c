@@ -1747,39 +1747,43 @@ static int ram_find_and_save_block(QEMUFile *f, bool last_stage,
                 case S0_NonDirty:  // for the first_round_nondirty_option only 
 
                   found = mplm_find_nondirty_block(f, &npss, &again, &dirty_ram_abs);
-                  checked_mplm_nondirty_sent++;
 
 //  printf("RSB:S0_NonDirty: find a NONDIRTY (1,1) found= %d, again= %d, last addr %" PRId64 " sent num= %" PRId64"\n", 
 //      (int) found, (int) again, (int64_t) dirty_ram_abs, checked_mplm_nondirty_sent); 
 //  fflush(stdout);  
 
                   if(!found && !again){
-                      printf("S0_NonDirty: Live migration is going to finish\n"); 
-                      fflush(stdout); 
+                    printf("S0_NonDirty: Live migration is going to finish\n"); 
+                    fflush(stdout); 
+                  }
+                  else{
+                    checked_mplm_nondirty_sent++;
                   }
 
                   break; 
 
                 case S1_NonDirty: 
                   if(mplm_send_counter < mplm_nondirty_pages_allot){
-                      // finding a non dirty page
-                      found = mplm_find_nondirty_block(f, &npss, &again, &dirty_ram_abs);
+                    // finding a non dirty page
+                    found = mplm_find_nondirty_block(f, &npss, &again, &dirty_ram_abs);
+
+                    if(!found && !again){
+                      printf("S1_NonDirty: Live migration is going to finish\n"); 
+                      fflush(stdout); 
+                    }
+                    else{
                       checked_mplm_nondirty_sent++;
                       rsb_state = S1_NonDirty; 
-
-                      if(!found && !again){
-                          printf("S1_NonDirty: Live migration is going to finish\n"); 
-                          fflush(stdout); 
-                      }
+                      mplm_send_counter++; 
+                    }
                   }
                   else{
-                      rsb_state = S2_Dirty; 
-                      found = false; 
+                    rsb_state = S2_Dirty; 
+                    found = false; 
                   }
 //  printf("RSB: find a NONDIRTY (1,1) found= %d, again= %d, last addr %" PRId64 " sent num= %" PRId64"\n", 
 //      (int) found, (int) again, (int64_t) dirty_ram_abs, checked_mplm_nondirty_sent); 
 //  fflush(stdout);  
-                  mplm_send_counter++; 
 
                   break; 
 
@@ -1787,8 +1791,6 @@ static int ram_find_and_save_block(QEMUFile *f, bool last_stage,
                   if((mplm_send_counter >= mplm_nondirty_pages_allot) &&
                      (mplm_send_counter < mplm_send_cycle_size)){
                       found = mplm_find_dirty_block(f, &pss, &again, &dirty_ram_abs);
-                      checked_mplm_dirty_sent++;
-                      rsb_state = S2_Dirty; 
 
                       if(!found && !again){
                           printf("RSB: No dirty pages found! Change to do S0_NonDirty!\n"); 
@@ -1799,6 +1801,8 @@ static int ram_find_and_save_block(QEMUFile *f, bool last_stage,
                           again = true; 
                       }
                       else{
+                          rsb_state = S2_Dirty; 
+                          checked_mplm_dirty_sent++;
                           mplm_send_counter++; 
                       }
                   }
@@ -1822,14 +1826,18 @@ static int ram_find_and_save_block(QEMUFile *f, bool last_stage,
                                        last_stage, bytes_transferred,
                                        dirty_ram_abs);
 
-		  if(pages != 0) real_mplm_dirty_sent++; 
+		  if(pages != 0){ 
+                    real_mplm_dirty_sent++; 
+                  }
               }
               else{ // send a nondirty page
                   pages = ram_save_host_page(ms, f, &npss,
                                        last_stage, bytes_transferred,
                                        dirty_ram_abs);
 
-		  if(pages != 0) real_mplm_nondirty_sent++; 
+		  if(pages != 0){
+                    real_mplm_nondirty_sent++; 
+                  }
               }
           }
 
@@ -2524,6 +2532,9 @@ static int ram_save_setup(QEMUFile *f, void *opaque)
     return 0;
 }
 
+//MPLM
+int accum_i = 0;  
+
 static int ram_save_iterate(QEMUFile *f, void *opaque)
 {
     int ret;
@@ -2562,10 +2573,10 @@ static int ram_save_iterate(QEMUFile *f, void *opaque)
     	if(mplm_wakeup_time.tv_sec == 0){
     		// set mplm wake up time
     		gettimeofday(&mplm_wakeup_time, NULL);
-    		printf("mplm_wakeup_time sec %"PRId64 " usec %" PRId64 "\n",
+    		printf("RSI: mplm_wakeup_time sec %"PRId64 " usec %" PRId64 "\n",
     				mplm_wakeup_time.tv_sec, mplm_wakeup_time.tv_usec);
     		mplm_wakeup_time.tv_sec = mplm_wakeup_time.tv_sec + mplm_interval;
-    		printf("mplm_wakeup_time + 3 sec %"PRId64 " usec %" PRId64 "\n",
+    		printf("RSI: mplm_wakeup_time + 3 sec %"PRId64 " usec %" PRId64 "\n",
     				mplm_wakeup_time.tv_sec, mplm_wakeup_time.tv_usec);
     		fflush(stdout);
     	}
@@ -2578,10 +2589,11 @@ static int ram_save_iterate(QEMUFile *f, void *opaque)
         /* no more pages to sent */
         if (pages == 0) {
             done = 1;
+            accum_i = 0; 
             break_code = 1; // MPLM
             mplm_bitmap_sync_flag = 1; // this will cause pending to call mig_bit_sync and decide to finish or not
-//printf("iterate: set bitmap sync flag; out of while loop\n"); 
-//fflush(stdout); 
+printf("RSI: set bitmap sync flag; out of while loop\n"); 
+fflush(stdout); 
             break;
         }
         acct_info.iterations++;
@@ -2595,40 +2607,79 @@ static int ram_save_iterate(QEMUFile *f, void *opaque)
         	uint64_t t1 = (qemu_clock_get_ns(QEMU_CLOCK_REALTIME) - t0) / 1000000;
             if (t1 > MAX_WAIT) {
                 trace_ram_save_iterate_big_wait(t1, i);
-                break_code = 2; // MPLM debug
-                // MPLM
-                if(mplm_flag){
-                	struct timeval t_cur;
-                	gettimeofday(&t_cur, NULL);
-            		//printf("%d round: t_cur.tv_sec %" PRId64 " t_cur.tv_usec %" PRId64 "\n",
-            		//		i, t_cur.tv_sec, t_cur.tv_usec);
-            		//fflush(stdout);
-                	if((t_cur.tv_sec > mplm_wakeup_time.tv_sec)||
-                		((t_cur.tv_sec == mplm_wakeup_time.tv_sec)&&
-                		 (t_cur.tv_usec > mplm_wakeup_time.tv_usec))){
-                		mplm_wakeup_time.tv_sec = t_cur.tv_sec + mplm_interval;
-                		mplm_wakeup_time.tv_usec = t_cur.tv_usec;
-                		//printf("new mplm_wakeup_time: wake.tv_sec %" PRId64 " wake.tv_usec %" PRId64 "\n",
-                		//		mplm_wakeup_time.tv_sec, mplm_wakeup_time.tv_usec);
-                		//fflush(stdout);
-                		break_code = 3; // MPLM debug
-                		mplm_bitmap_sync_flag = 1;
-                	}
+               	break_code = 2; // MPLM debug
+            }
+            // MPLM
+            if(mplm_flag){
+              	struct timeval t_cur;
+              	gettimeofday(&t_cur, NULL);
+
+            	//printf("RSI: %d round: t_cur.tv_sec %" PRId64 " t_cur.tv_usec %" PRId64 "\n",
+           	//		i, t_cur.tv_sec, t_cur.tv_usec);
+            	//fflush(stdout);
+
+               	if((t_cur.tv_sec > mplm_wakeup_time.tv_sec)||
+               		((t_cur.tv_sec == mplm_wakeup_time.tv_sec)&&
+               		 (t_cur.tv_usec > mplm_wakeup_time.tv_usec))){
+               		mplm_wakeup_time.tv_sec = t_cur.tv_sec + mplm_interval;
+               		mplm_wakeup_time.tv_usec = t_cur.tv_usec;
+
+               		printf("RSI: INSIDELOOP new mplm_wakeup_time: wake.tv_sec %" PRId64 " wake.tv_usec %" PRId64 "\n",
+               				mplm_wakeup_time.tv_sec, mplm_wakeup_time.tv_usec);
+               		fflush(stdout);
+
+               		break_code = 3; // MPLM debug
+               		mplm_bitmap_sync_flag = 1;
+                        accum_i = 0; 
+                        break; 
+               	}
+                else{
+                        if(break_code == 2){
+                          break; 
+                        }
                 }
-                break;
             }
         }
         i++;
+        accum_i++; 
     }
     flush_compressed_data(f);
     rcu_read_unlock();
 
 // MPLM
     if(local_debug_flag){
-    	printf("(rsi_entry, iters, gap, bc, ret) [%d, %d, %" PRId64 " ms, %d %d]\n",
-    			num_enter_ram_save_iterate, i, calling_gap, break_code, ret);
+    	printf("(RSI: rsi_entry, i, accum_i, gap, bc, ret) [%d, %d, %d, %" PRId64 " ms, %d %d]\n",
+    			num_enter_ram_save_iterate, i, accum_i, calling_gap, break_code, ret);
     	fflush(stdout);
     }
+
+    // MPLM
+    if(mplm_flag){
+      if((break_code == 0)&&(ret == 0)&&((accum_i & 63) == 0)){
+          struct timeval t_cur;
+          gettimeofday(&t_cur, NULL);
+
+           //printf("RSI: %d round: t_cur.tv_sec %" PRId64 " t_cur.tv_usec %" PRId64 "\n",
+           //			i, t_cur.tv_sec, t_cur.tv_usec);
+           //fflush(stdout);
+
+          if((t_cur.tv_sec > mplm_wakeup_time.tv_sec)||
+            ((t_cur.tv_sec == mplm_wakeup_time.tv_sec)&&
+             (t_cur.tv_usec > mplm_wakeup_time.tv_usec))){
+
+               mplm_wakeup_time.tv_sec = t_cur.tv_sec + mplm_interval;
+               mplm_wakeup_time.tv_usec = t_cur.tv_usec;
+
+               printf("RSI: OUTSIDELOOP new mplm_wakeup_time: wake.tv_sec %" PRId64 " wake.tv_usec %" PRId64 "\n",
+               			mplm_wakeup_time.tv_sec, mplm_wakeup_time.tv_usec);
+               fflush(stdout);
+
+               break_code = 3; // MPLM debug
+               mplm_bitmap_sync_flag = 1;
+               accum_i = 0; 
+          }
+      }
+    } 
 
     /*
      * Must occur before EOS (or any QEMUFile operation)
