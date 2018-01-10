@@ -1,4 +1,4 @@
-# Memory-bounded Pre-copy Live Migration (MPLM) of Virtual Machines (UNDER CONSTRUCTION!)
+# Memory-bounded Pre-copy Live Migration (MPLM) of Virtual Machines
 <p><p>
 Kasidit Chanchio <br>
 Contact: kasiditchanchio@gmail.com <br>
@@ -197,19 +197,46 @@ $ sudo /home/kasidit/qemu-mplm-bin/bin/qemu-system-x86_64 -enable-kvm -cpu host 
   -monitor tcp::9666,server,nowait \
   -net nic -net user \
   -localtime \
-  -incoming tcp::8698 &
+ <b>-incoming tcp::8698</b> &
 $
 </pre>
 <p>
 <i><a id="srcVM"><h4>2.4 Run a source VM</h4></a></i>
 <p>
 Next, we will run the source VM on the source host. 
-
+<p><p>
+ <b>On the source host:</b>
+<pre>
+$ sudo /home/kasidit/qemu-mplm-bin/bin/qemu-system-x86_64 -enable-kvm -cpu host -smp 4 -m 16G \
+  -drive file=/home/kasidit/images/ubuntu1604qcow2.img,format=qcow2 -boot c -vnc :95 \
+  -monitor tcp::9666,server,nowait \
+  -net nic -net user \
+  -localtime > migreport.txt &
+$
+</pre>
+<p><p>
+ <b>On the VM:</b><br>
+We will also run an application (BT Class C)on the VM. 
+<pre>
+vm$> cd NPB3.3.1/NPB3.3-OMP
+vm$> ./bin/bt.C.x
+</pre>
 <p>
 <i><a id="migVM"><h4>2.5 Perform an MPLM migration</h4></a></i>
-<p>
-TBA
+<p><p>
+ <b>On the source host:</b>
+We launch a migration using the following command.
+<pre>
+$ echo "migrate -d tcp:192.100.20.3:8698" | nc localhost 9666
+</pre>
+We can also check status of the migration below.
+<pre>
+$ echo "info migrate" | nc localhost 9666
+</pre>
+Performance statistices during the migration are reported in the migreport.txt. We will explain these results later. 
 <p>
 <a id="part3"><h3>3. Summary</h3></a>
 <p>
-You only need to do the 1st part and do what you usually do to migrate a VM. You may see the qemu document to learn how to migrate a VM. Check out this  https://github.com/kasidit/runQemu link if you want to see some basic commands for running qemu. 
+We already show how to install and use MPLM for a migration. In the next step, we are going to 
+describe the performance results. We will also discuss the implementation issues such as 
+new data structures and code being added into Qemu.
