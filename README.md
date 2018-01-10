@@ -6,7 +6,7 @@ Department of computer science <br>
 Faculty of science and technology <br>
 Thammasat University.
 <p>
-Memory-bound Pre-copy Live Migration (MPLM) is a novel pre-copy migration mechanism that overlap VM computation and VM state transfer in a best-effort manner. We implement MPLM in a modified version of QEMU 2.9.0, namely <b>qemu-mplm</b>, available at this web site. This software is provided mainly for educational purposes. Please refer to the official QEMU software at https://www.qemu.org/ for more information about qemu.    
+Memory-bound Pre-copy Live Migration (MPLM) is a pre-copy migration mechanism that incorporate a new algorithm to overlaps VM computation and VM state transfer in a best-effort manner. We implement MPLM in a modified version of QEMU 2.9.0, namely <b>qemu-mplm</b>, available at this web site. This software is provided mainly for educational purposes. Please refer to the official QEMU software at https://www.qemu.org/ for more information about qemu.    
 <ul>
  <li> <a href="#part1">1. Compile qemu-mplm</a>
       <ul>
@@ -174,24 +174,37 @@ $ echo quit | nc localhost 9666
 <p>
 <i><a id="destVM"><h4>2.3 Run a destination VM to wait for VM state</h4></a></i>
 <p> 
-In this section, we are going to setup another host computer to be a destination computer. First, we follows instructions in section 1 to prepare and compile qemu-mplm software on the destination host. Next, we will copy the image file from the source host to destination host. Supposed that the IP address of the destination host is DestIP and the login account there is kasidit, we will use the following commnads to do so. 
+In this section, we are going to setup another host computer to be a destination computer. First, we follows instructions in section 1 to prepare and compile qemu-mplm software on the destination host. Next, we will copy the image file from the source host to destination host. Supposed that the IP address of the destination host is 192.100.20.3 and the login account there is kasidit, we will use the following commnads to do so. 
 <p><p>
  <b>On the destination host:</b>
 <pre>
 $ mkdir /home/kasidit/images
-$ 
 </pre>
 <p><p>
  <b>On the source host:</b>
 <pre>
 $ cd /home/kasidit/images
-$ scp ubuntu1604qcow2.img kasidit@DestIP:/home/kasidit/images
+$ scp ubuntu1604qcow2.img kasidit@192.100.20.3:/home/kasidit/images
+</pre>
+<p><p>
+ <b>On the destination host:</b>
+<p><p>
+On the destination machine, we invoke qemu to wait for state transfer from the source. You can also run a vnc client 
+to view the VM's console. This VM wait for a connection from a migraing VM on port 8698. 
+<pre>
+$ sudo /home/kasidit/qemu-mplm-bin/bin/qemu-system-x86_64 -enable-kvm -cpu host -smp 4 -m 16G \
+  -drive file=/home/kasidit/images/ubuntu1604qcow2.img,format=qcow2 -boot c -vnc :95 \
+  -monitor tcp::9666,server,nowait \
+  -net nic -net user \
+  -localtime \
+  -incoming tcp::8698 &
 $
 </pre>
 <p>
 <i><a id="srcVM"><h4>2.4 Run a source VM</h4></a></i>
 <p>
-TBA
+Next, we will run the source VM on the source host. 
+
 <p>
 <i><a id="migVM"><h4>2.5 Perform an MPLM migration</h4></a></i>
 <p>
