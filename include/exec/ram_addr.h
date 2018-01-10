@@ -580,7 +580,6 @@ uint64_t mplm_next_cpu_physical_memory_sync_dirty_bitmap(unsigned long *dest,
                         TARGET_PAGE_SIZE,
                         DIRTY_MEMORY_MIGRATION)) {
                 sync_real_dirty_pages += 1;
-                //long k = (start + addr) >> TARGET_PAGE_BITS;
                 if (!test_and_set_bit(k, dest)) {
                     num_dirty++;
                 }

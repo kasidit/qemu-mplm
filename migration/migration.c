@@ -2157,12 +2157,12 @@ static void *migration_thread(void *opaque)
                     double nondirty_percents = 0.0; 
                     nondirty_percents = (double)(checked_mplm_nondirty_sent)/
 		      (double)(checked_mplm_dirty_sent+checked_mplm_nondirty_sent);
-       		    printf(" nondirty FSM checked= %"PRId64" dirty FSM checked=%"PRId64 " nondirty FSM Checked Percents is %lf \n", 
+       		    printf(" Accumulated Tx nondirty FSM count= %"PRId64" dirty FSM count=%"PRId64 " nondirty FSM count Percents is %lf \n", 
                       checked_mplm_nondirty_sent, checked_mplm_dirty_sent, nondirty_percents);
         	    fflush(stdout);
                   }
                   else{
-       		    printf(" ERROR: nondirty FSM checked= %"PRId64" dirty FSM checked=%"PRId64 " \n", 
+       		    printf(" ERROR: nondirty FSM count= %"PRId64" dirty FSM count=%"PRId64 " \n", 
                                checked_mplm_nondirty_sent, checked_mplm_dirty_sent);
         	    fflush(stdout);
                   }
@@ -2171,7 +2171,7 @@ static void *migration_thread(void *opaque)
                     double nondirty_real_percents = 0.0; 
                     nondirty_real_percents = (double)(real_mplm_nondirty_sent)/
 		      (double)(real_mplm_dirty_sent+real_mplm_nondirty_sent);
-       		    printf(" nondirty FSM real= %"PRId64" dirty FSM real=%"PRId64 " nondirty FSM real Percents is %lf \n", 
+       		    printf(" Accumulated Tx nondirty FSM real= %"PRId64" dirty FSM real=%"PRId64 " nondirty FSM real Percents is %lf \n\n", 
                       real_mplm_nondirty_sent, real_mplm_dirty_sent, nondirty_real_percents);
         	    fflush(stdout);
                   }
@@ -2216,12 +2216,12 @@ static void *migration_thread(void *opaque)
                     double nondirty_percents = 0.0; 
                     nondirty_percents = (double)(checked_mplm_nondirty_sent)/
 		      (double)(checked_mplm_dirty_sent+checked_mplm_nondirty_sent);
-       		    printf(" AFTER ITER nondirty FSM checked= %"PRId64" dirty FSM checked=%"PRId64 " nondirty FSM Checked Percents is %lf \n", 
+       		    printf(" Accumulated Tx nondirty FSM count= %"PRId64" dirty FSM count=%"PRId64 " nondirty FSM count Percents is %lf \n", 
                       checked_mplm_nondirty_sent, checked_mplm_dirty_sent, nondirty_percents);
         	    fflush(stdout);
                   }
                   else{
-       		    printf(" ERROR: nondirty FSM checked= %"PRId64" dirty FSM checked=%"PRId64 " \n", 
+       		    printf(" ERROR: nondirty FSM count= %"PRId64" dirty FSM count=%"PRId64 " \n", 
                                checked_mplm_nondirty_sent, checked_mplm_dirty_sent);
         	    fflush(stdout);
                   }
@@ -2230,7 +2230,7 @@ static void *migration_thread(void *opaque)
                     double nondirty_real_percents = 0.0; 
                     nondirty_real_percents = (double)(real_mplm_nondirty_sent)/
 		      (double)(real_mplm_dirty_sent+real_mplm_nondirty_sent);
-       		    printf(" AFTER ITER nondirty FSM real= %"PRId64" dirty FSM real=%"PRId64 " nondirty FSM real Percents is %lf \n", 
+       		    printf(" Accumulated Tx nondirty FSM real= %"PRId64" dirty FSM real=%"PRId64 " nondirty FSM real Percents is %lf \n\n", 
                       real_mplm_nondirty_sent, real_mplm_dirty_sent, nondirty_real_percents);
         	    fflush(stdout);
                   }
