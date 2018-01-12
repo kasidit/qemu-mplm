@@ -21,6 +21,7 @@ Memory-bound Pre-copy Live Migration (MPLM) is a pre-copy migration mechanism th
        <li> <a href="#destVM">2.3 Run a destination VM to wait for VM state</a>
        <li> <a href="#srcVM">2.4 Run a source VM</a>
        <li> <a href="#migVM">2.5 Perform a migration</a> 
+       <li> <a href="#perf">2.6 Understand Performance Report</a> 
       </ul>
  <li><a href="#part3">3. Summary</a>
 </ul>
@@ -234,6 +235,10 @@ We can also check status of the migration below.
 $ echo "info migrate" | nc localhost 9666
 </pre>
 Performance statistices during the migration are reported in the migreport.txt. We will explain these results later. 
+<p>
+<p>
+<i><a id="Perf"><h4>2.6 Understand Performance Report</h4></a></i>
+<p> 
 <p>
 <a id="part3"><h3>3. Summary</h3></a>
 <p>
