@@ -1,0 +1,113 @@
+MPLM: flag = 1, mplm_interval = 3
+ <> migration_bitmap_sync: TotalPages 4199090 DirtPagesPeriod 4198610 DirtPagesCnt 4198610 TrackedNondirtPages 4198610 ExplicitlyCountedNondirtPages 4198642
+ RSI: mplm_wakeup_time sec 1515755501 usec 358210
+RSI: mplm_wakeup_time + 3 sec 1515755504 usec 358210
+RSI(i): new mplm_wakeup_time: wake.tv_sec 1515755507 wake.tv_usec 391098
+<1> mplm_bitmap_sync_interval = 0 ms 
+ Accumulated TxNondirtyFSMcount= 721827 (721827 increase) TxDirtyFSMcount=0 (0 increase) NondirtyFSMcount Percents is 1.000000 
+ Accumulated TxNondirtyFSMreal= 721827 (721827 increase) TxDirtyFSMreal=0 (0 increase) NondirtyFSMreal Percents is 1.000000 
+
+ <> migration_bitmap_sync: TotalPages 4199090 DirtPagesPeriod 4352840 DirtPagesCnt 4198610 TrackedNondirtPages 3330510 ExplicitlyCountedNondirtPages 3330542
+ RSI(i): new mplm_wakeup_time: wake.tv_sec 1515755510 wake.tv_usec 391729
+<2> mplm_bitmap_sync_interval = 3001 ms 
+ Accumulated TxNondirtyFSMcount= 765740 (43913 increase) TxDirtyFSMcount=43900 (43900 increase) NondirtyFSMcount Percents is 0.945778 
+ Accumulated TxNondirtyFSMreal= 739469 (17642 increase) TxDirtyFSMreal=43900 (43900 increase) NondirtyFSMreal Percents is 0.943960 
+
+ <> migration_bitmap_sync: TotalPages 4199090 DirtPagesPeriod 120129 DirtPagesCnt 4155010 TrackedNondirtPages 3312838 ExplicitlyCountedNondirtPages 3312870
+ RSI(i): new mplm_wakeup_time: wake.tv_sec 1515755513 wake.tv_usec 394361
+<3> mplm_bitmap_sync_interval = 3002 ms 
+ Accumulated TxNondirtyFSMcount= 935527 (169787 increase) TxDirtyFSMcount=213668 (169768 increase) NondirtyFSMcount Percents is 0.814072 
+ Accumulated TxNondirtyFSMreal= 909195 (169726 increase) TxDirtyFSMreal=213668 (169768 increase) NondirtyFSMreal Percents is 0.809711 
+
+ <> migration_bitmap_sync: TotalPages 4199090 DirtPagesPeriod 111060 DirtPagesCnt 3986393 TrackedNondirtPages 3142637 ExplicitlyCountedNondirtPages 3142637
+ RSI(i): new mplm_wakeup_time: wake.tv_sec 1515755516 wake.tv_usec 399345
+<4> mplm_bitmap_sync_interval = 3005 ms 
+ Accumulated TxNondirtyFSMcount= 1453027 (517500 increase) TxDirtyFSMcount=731194 (517526 increase) NondirtyFSMcount Percents is 0.665238 
+ Accumulated TxNondirtyFSMreal= 1426695 (517500 increase) TxDirtyFSMreal=731194 (517526 increase) NondirtyFSMreal Percents is 0.661153 
+
+ <> migration_bitmap_sync: TotalPages 4199090 DirtPagesPeriod 143542 DirtPagesCnt 3484259 TrackedNondirtPages 2625020 ExplicitlyCountedNondirtPages 2625020
+ RSI(i): new mplm_wakeup_time: wake.tv_sec 1515755519 wake.tv_usec 401329
+<5> mplm_bitmap_sync_interval = 3002 ms 
+ Accumulated TxNondirtyFSMcount= 1477827 (24800 increase) TxDirtyFSMcount=755960 (24766 increase) NondirtyFSMcount Percents is 0.661579 
+ Accumulated TxNondirtyFSMreal= 1451495 (24800 increase) TxDirtyFSMreal=755960 (24766 increase) NondirtyFSMreal Percents is 0.657542 
+
+ <> migration_bitmap_sync: TotalPages 4199090 DirtPagesPeriod 111254 DirtPagesCnt 3467620 TrackedNondirtPages 2600220 ExplicitlyCountedNondirtPages 2600220
+ RSI(i): new mplm_wakeup_time: wake.tv_sec 1515755522 wake.tv_usec 401914
+<6> mplm_bitmap_sync_interval = 3001 ms 
+ Accumulated TxNondirtyFSMcount= 1502927 (25100 increase) TxDirtyFSMcount=781068 (25108 increase) NondirtyFSMcount Percents is 0.658026 
+ Accumulated TxNondirtyFSMreal= 1476595 (25100 increase) TxDirtyFSMreal=781068 (25108 increase) NondirtyFSMreal Percents is 0.654037 
+
+ <> migration_bitmap_sync: TotalPages 4199090 DirtPagesPeriod 111003 DirtPagesCnt 3442620 TrackedNondirtPages 2575114 ExplicitlyCountedNondirtPages 2575114
+ RSI(i): new mplm_wakeup_time: wake.tv_sec 1515755525 wake.tv_usec 434710
+<7> mplm_bitmap_sync_interval = 3033 ms 
+ Accumulated TxNondirtyFSMcount= 3988759 (2485832 increase) TxDirtyFSMcount=3266900 (2485832 increase) NondirtyFSMcount Percents is 0.549745 
+ Accumulated TxNondirtyFSMreal= 3855482 (2378887 increase) TxDirtyFSMreal=3266900 (2485832 increase) NondirtyFSMreal Percents is 0.541319 
+
+ <> migration_bitmap_sync: TotalPages 4199090 DirtPagesPeriod 120531 DirtPagesCnt 966262 TrackedNondirtPages 195745 ExplicitlyCountedNondirtPages 195745
+ RSI(i): new mplm_wakeup_time: wake.tv_sec 1515755528 wake.tv_usec 434838
+<8> mplm_bitmap_sync_interval = 3000 ms 
+ Accumulated TxNondirtyFSMcount= 4013525 (24766 increase) TxDirtyFSMcount=3291650 (24750 increase) NondirtyFSMcount Percents is 0.549408 
+ Accumulated TxNondirtyFSMreal= 3879998 (24516 increase) TxDirtyFSMreal=3291650 (24750 increase) NondirtyFSMreal Percents is 0.541019 
+
+ <> migration_bitmap_sync: TotalPages 4199090 DirtPagesPeriod 144322 DirtPagesCnt 941539 TrackedNondirtPages 171200 ExplicitlyCountedNondirtPages 171200
+ RSI(i): new mplm_wakeup_time: wake.tv_sec 1515755531 wake.tv_usec 435642
+<9> mplm_bitmap_sync_interval = 3001 ms 
+ Accumulated TxNondirtyFSMcount= 4038752 (25227 increase) TxDirtyFSMcount=3316900 (25250 increase) NondirtyFSMcount Percents is 0.549068 
+ Accumulated TxNondirtyFSMreal= 3905014 (25016 increase) TxDirtyFSMreal=3316900 (25250 increase) NondirtyFSMreal Percents is 0.540717 
+
+ <> migration_bitmap_sync: TotalPages 4199090 DirtPagesPeriod 110938 DirtPagesCnt 916293 TrackedNondirtPages 146182 ExplicitlyCountedNondirtPages 146182
+ RSI(i): new mplm_wakeup_time: wake.tv_sec 1515755534 wake.tv_usec 437049
+<10> mplm_bitmap_sync_interval = 3001 ms 
+ Accumulated TxNondirtyFSMcount= 4076060 (37308 increase) TxDirtyFSMcount=3354200 (37300 increase) NondirtyFSMcount Percents is 0.548576 
+ Accumulated TxNondirtyFSMreal= 3930272 (25258 increase) TxDirtyFSMreal=3354200 (37300 increase) NondirtyFSMreal Percents is 0.539541 
+
+ <> migration_bitmap_sync: TotalPages 4199090 DirtPagesPeriod 110736 DirtPagesCnt 878993 TrackedNondirtPages 120924 ExplicitlyCountedNondirtPages 120924
+ RSI(i): new mplm_wakeup_time: wake.tv_sec 1515755537 wake.tv_usec 437500
+<11> mplm_bitmap_sync_interval = 3001 ms 
+ Accumulated TxNondirtyFSMcount= 4103985 (27925 increase) TxDirtyFSMcount=3382150 (27950 increase) NondirtyFSMcount Percents is 0.548211 
+ Accumulated TxNondirtyFSMreal= 3957709 (27437 increase) TxDirtyFSMreal=3382150 (27950 increase) NondirtyFSMreal Percents is 0.539208 
+
+ <> migration_bitmap_sync: TotalPages 4199090 DirtPagesPeriod 119806 DirtPagesCnt 851059 TrackedNondirtPages 93473 ExplicitlyCountedNondirtPages 93473
+ RSI(i): new mplm_wakeup_time: wake.tv_sec 1515755540 wake.tv_usec 438496
+<12> mplm_bitmap_sync_interval = 3001 ms 
+ Accumulated TxNondirtyFSMcount= 4130006 (26021 increase) TxDirtyFSMcount=3408150 (26000 increase) NondirtyFSMcount Percents is 0.547880 
+ Accumulated TxNondirtyFSMreal= 3983252 (25543 increase) TxDirtyFSMreal=3408150 (26000 increase) NondirtyFSMreal Percents is 0.538903 
+
+ <> migration_bitmap_sync: TotalPages 4199090 DirtPagesPeriod 110461 DirtPagesCnt 825060 TrackedNondirtPages 67928 ExplicitlyCountedNondirtPages 67928
+ RSI(i): new mplm_wakeup_time: wake.tv_sec 1515755543 wake.tv_usec 440667
+<13> mplm_bitmap_sync_interval = 3002 ms 
+ Accumulated TxNondirtyFSMcount= 4154498 (24492 increase) TxDirtyFSMcount=3432650 (24500 increase) NondirtyFSMcount Percents is 0.547570 
+ Accumulated TxNondirtyFSMreal= 4007732 (24480 increase) TxDirtyFSMreal=3432650 (24500 increase) NondirtyFSMreal Percents is 0.538646 
+
+ <> migration_bitmap_sync: TotalPages 4199090 DirtPagesPeriod 144621 DirtPagesCnt 800560 TrackedNondirtPages 43431 ExplicitlyCountedNondirtPages 43431
+ RSI(i): new mplm_wakeup_time: wake.tv_sec 1515755546 wake.tv_usec 440851
+<14> mplm_bitmap_sync_interval = 3000 ms 
+ Accumulated TxNondirtyFSMcount= 4178977 (24479 increase) TxDirtyFSMcount=3457101 (24451 increase) NondirtyFSMcount Percents is 0.547267 
+ Accumulated TxNondirtyFSMreal= 4032211 (24479 increase) TxDirtyFSMreal=3457101 (24451 increase) NondirtyFSMreal Percents is 0.538395 
+
+ <> migration_bitmap_sync: TotalPages 4199090 DirtPagesPeriod 110925 DirtPagesCnt 776109 TrackedNondirtPages 18951 ExplicitlyCountedNondirtPages 18951
+ RSI(i): new mplm_wakeup_time: wake.tv_sec 1515755549 wake.tv_usec 440865
+<15> mplm_bitmap_sync_interval = 3000 ms 
+ Accumulated TxNondirtyFSMcount= 4198413 (19436 increase) TxDirtyFSMcount=3873901 (416800 increase) NondirtyFSMcount Percents is 0.520100 
+ Accumulated TxNondirtyFSMreal= 4051162 (18951 increase) TxDirtyFSMreal=3873901 (416800 increase) NondirtyFSMreal Percents is 0.511184 
+
+ <> migration_bitmap_sync: TotalPages 4199090 DirtPagesPeriod 119775 DirtPagesCnt 359421 TrackedNondirtPages 0 ExplicitlyCountedNondirtPages 0
+ pending: mplm_live_migration_stage_finish is ON
+ LastAccumulated TxNondirtyFSMcount= 4198413 (0 increase) DirtyFSMcount=3873901 (0 added) NondirtyFSMcount Percents is 0.520100 
+ LastAccumulated TxNondirtyFSMreal= 4051162 (0 increase) TxDirtyFSMreal=3873901 NondirtyFSMreal (0 increase) Percents is 0.511184 
+
+ <> migration_bitmap_sync: TotalPages 4199090 DirtPagesPeriod 5503 DirtPagesCnt 359421 TrackedNondirtPages 0 ExplicitlyCountedNondirtPages 0
+ capabilities: xbzrle: off rdma-pin-all: off auto-converge: off zero-blocks: off compress: off events: off postcopy-ram: off x-colo: off release-ram: off 
+Migration status: completed
+total time: 57295 milliseconds
+downtime: 12138 milliseconds
+setup: 70 milliseconds
+transferred ram: 2836175 kbytes
+throughput: 405.57 mbps
+remaining ram: 0 kbytes
+total ram: 16794440 kbytes
+duplicate: 7593476 pages
+skipped: 0 pages
+normal: 691008 pages
+normal bytes: 2764032 kbytes
+dirty sync count: 17
