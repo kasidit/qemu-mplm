@@ -2152,6 +2152,8 @@ static void *migration_thread(void *opaque)
 
 		// MPLM report tx pages
                 if(mplm_type == MPLM_TWO_QUEUES){
+                  printf(" pending_size = %"PRId64" pending_pages = %lf\n", 
+                  pending_size, (double)((double)pending_size/(double)4096));  
                   if((checked_mplm_nondirty_sent != 0) || (checked_mplm_dirty_sent != 0)){
                     double nondirty_percents = 0.0; 
                     nondirty_percents = (double)(checked_mplm_nondirty_sent)/

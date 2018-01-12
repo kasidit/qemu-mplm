@@ -1673,6 +1673,9 @@ static int ram_save_target_nondirty_page(MigrationState *ms, QEMUFile *f,
                                 bytes_transferred);
         }
 
+        // MPLM clear dirty bit too. 
+        migration_bitmap_clear_dirty(nondirty_ram_abs);  
+
         if (res < 0) {
             return res;
         }
