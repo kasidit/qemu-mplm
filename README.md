@@ -237,8 +237,11 @@ $ echo "info migrate" | nc localhost 9666
 Performance statistices during the migration are reported in the migreport.txt. We will explain these results later. 
 <p>
 <p>
-<i><a id="Perf"><h4>2.6 Understand Performance Report</h4></a></i>
+<i><a id="Perf"><h4>2.6 MPLM Performance Report</h4></a></i>
 <p> 
+During the migration, MPLM reports its operating status to the "migreport.txt" file. An example of the file 
+generated during a migration of a VM running the LU benchmark is provided at 
+ <a href="migration/MPLM/migreport.txt">qemu-mplm/migration/MPLM/migreport.txt</a>. (Explanation coming soon!) 
 <p>
 <a id="part3"><h3>3. Summary</h3></a>
 <p>
