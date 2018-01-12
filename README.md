@@ -21,7 +21,7 @@ Memory-bound Pre-copy Live Migration (MPLM) is a pre-copy migration mechanism th
        <li> <a href="#destVM">2.3 Run a destination VM to wait for VM state</a>
        <li> <a href="#srcVM">2.4 Run a source VM</a>
        <li> <a href="#migVM">2.5 Perform a migration</a> 
-       <li> <a href="#perf">2.6 Understand Performance Report</a> 
+       <li> <a href="#Perf">2.6 MPLM Performance Report</a> 
       </ul>
  <li><a href="#part3">3. Summary</a>
 </ul>
