@@ -2072,6 +2072,12 @@ static int mplm_ending_conditions_met(void)
  * It drives the migration and pumps the data down the outgoing channel.
  */
 
+extern int rstd_not_send_dirty; 
+extern int debugnext_dirty;
+extern int debugnext_not_dirty;
+extern int next_dirty;
+extern int next_not_dirty;
+
 static void *migration_thread(void *opaque)
 {
     MigrationState *s = opaque;
@@ -2247,12 +2253,15 @@ static void *migration_thread(void *opaque)
                 double nondirty_real_percents = 0.0; 
                 nondirty_real_percents = (double)(real_mplm_nondirty_sent)/
 	           (double)(real_mplm_dirty_sent+real_mplm_nondirty_sent);
-       		printf(" Accumulated TxNondirtyFSMreal= %"PRId64" (%"PRId64" increase) TxDirtyFSMreal=%"PRId64 " (%"PRId64" increase) NondirtyFSMreal Percents is %lf \n\n", 
+       		printf(" Accumulated TxNondirtyFSMreal= %"PRId64" (%"PRId64" increase) TxDirtyFSMreal=%"PRId64 " (%"PRId64" increase) NondirtyFSMreal Percents is %lf \n DEBUG: rstd_not_send_dirt %d nextNotdirt %d nextDirt %d \n ImnextNotdirt %d ImnextDirt %d \n\n", 
                       real_mplm_nondirty_sent, 
                       (real_mplm_nondirty_sent - lastreal_mplm_nondirty_sent), 
                       real_mplm_dirty_sent, 
                       (real_mplm_dirty_sent - lastreal_mplm_dirty_sent),
-                      nondirty_real_percents);
+                      nondirty_real_percents, 
+                      rstd_not_send_dirty, 
+                      debugnext_not_dirty, debugnext_dirty,
+                      next_not_dirty, next_dirty);
         	fflush(stdout);
               }
               else{

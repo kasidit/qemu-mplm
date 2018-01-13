@@ -621,6 +621,11 @@ ram_addr_t migration_bitmap_find_dirty(RAMBlock *rb,
     return (next - base) << TARGET_PAGE_BITS;
 }
 
+int debugnext_not_dirty = 0; 
+int debugnext_dirty = 0; 
+int next_not_dirty = 0; 
+int next_dirty = 0; 
+
 static inline
 ram_addr_t mplm_migration_bitmap_find_dirty(RAMBlock *rb,
                                        ram_addr_t start,
@@ -635,38 +640,70 @@ ram_addr_t mplm_migration_bitmap_find_dirty(RAMBlock *rb,
 
     unsigned long next;
     bool nondirty_flag = false;
+    bool dirty_flag = false;
     bool dirtybit_found = false;
     bool exceed_block_size = false;
 
     bitmap = atomic_rcu_read(&migration_bitmap_rcu)->bmap;
     nondirtybitmap = atomic_rcu_read(&migration_bitmap_rcu)->nondirtybmap;
 
-    do{
+    if (ram_bulk_stage && nr > base) {
 
-      if (ram_bulk_stage && nr > base) {
-          next = nr + 1;
-      } else {
-          next = find_next_bit(bitmap, size, nr);
-      }
+      do{
 
-      if(next < size){
+        next = nr + 1;
+
+        if(next < size){
           nondirty_flag = test_bit(next, nondirtybitmap);
-          if (nondirty_flag == false){
+          dirty_flag = test_bit(next, bitmap);
+          if ((dirty_flag == true)&&(nondirty_flag == false)){
         	  dirtybit_found = true;
           }
           else{
-        	  nr = next + 1;
+        	  //nr = next + 1;
+        	  nr = next;
           }
-      }
-      else{
+        }
+        else{
     	  exceed_block_size = true;
-      }
+        }
 
-    }while(!exceed_block_size && !dirtybit_found);
+      }while(!exceed_block_size && !dirtybit_found);
+
+    } else {
+        next = find_next_bit(bitmap, size, nr);
+    }
 
     *ram_addr_abs = next << TARGET_PAGE_BITS;
     return (next - base) << TARGET_PAGE_BITS;
 }
+
+/*
+static inline
+ram_addr_t mplm_migration_bitmap_find_dirty(RAMBlock *rb,
+                                       ram_addr_t start,
+                                       ram_addr_t *ram_addr_abs)
+{
+    unsigned long base = rb->offset >> TARGET_PAGE_BITS;
+    unsigned long nr = base + (start >> TARGET_PAGE_BITS);
+    uint64_t rb_size = rb->used_length;
+    unsigned long size = base + (rb_size >> TARGET_PAGE_BITS);
+    unsigned long *bitmap;
+
+    unsigned long next;
+
+    bitmap = atomic_rcu_read(&migration_bitmap_rcu)->bmap;
+
+    if (ram_bulk_stage && nr > base) {
+        next = nr + 1;
+    } else {
+        next = find_next_bit(bitmap, size, nr);
+    }
+
+    *ram_addr_abs = next << TARGET_PAGE_BITS;
+    return (next - base) << TARGET_PAGE_BITS;
+}
+*/
 
 static inline
 ram_addr_t mplm_migration_bitmap_find_nondirty(RAMBlock *rb,
@@ -688,7 +725,6 @@ ram_addr_t mplm_migration_bitmap_find_nondirty(RAMBlock *rb,
       next = nr + 1;
     } else {
       next = find_next_bit(nondirtybitmap, size, nr);
-
 
 //if(debug_counter < DEBUG_MAX_TIMES){
 //  printf(">>> NONDIRTY (1,0) error find_dirty flag= %d, found=%d, base= %ld, start= %ld, nr=%ld, size=%ld, next=%ld\n", 
@@ -1316,7 +1352,7 @@ static bool mplm_find_dirty_block(QEMUFile *f, PageSearchStatus *pss,
          * We've been once around the RAM and haven't found anything.
          * Give up.
          */
-printf("mplm_find_dirty_block: We've been once around the RAM and haven't found anything. Give Dirty up!\n");
+printf("mplm_find_dirty_block: We've been once around the RAM and haven't found anything. Give up dirty page serching for now!\n");
 fflush(stdout); 
         *again = false;
         return false;
@@ -1597,6 +1633,9 @@ err:
  *
  * Returns: Number of pages written.
  */
+//MPLM debug
+int rstd_not_send_dirty = 0; 
+
 static int ram_save_target_dirty_page(MigrationState *ms, QEMUFile *f,
                                 PageSearchStatus *pss,
                                 bool last_stage,
@@ -1635,6 +1674,9 @@ static int ram_save_target_dirty_page(MigrationState *ms, QEMUFile *f,
         if (res > 0) {
             last_sent_block = pss->block;
         }
+    }
+    else{
+        rstd_not_send_dirty++; 
     }
 
     return res;
