@@ -621,10 +621,8 @@ ram_addr_t migration_bitmap_find_dirty(RAMBlock *rb,
     return (next - base) << TARGET_PAGE_BITS;
 }
 
-int debugnext_not_dirty = 0; 
-int debugnext_dirty = 0; 
-int next_not_dirty = 0; 
-int next_dirty = 0; 
+// this is helpful to the experiment contraller. 
+extern int mplm_not_enforce_dirty_tx; 
 
 static inline
 ram_addr_t mplm_migration_bitmap_find_dirty(RAMBlock *rb,
@@ -645,30 +643,36 @@ ram_addr_t mplm_migration_bitmap_find_dirty(RAMBlock *rb,
     bool exceed_block_size = false;
 
     bitmap = atomic_rcu_read(&migration_bitmap_rcu)->bmap;
-    nondirtybitmap = atomic_rcu_read(&migration_bitmap_rcu)->nondirtybmap;
 
     if (ram_bulk_stage && nr > base) {
 
-      do{
+      if(mplm_not_enforce_dirty_tx){
 
         next = nr + 1;
 
-        if(next < size){
-          nondirty_flag = test_bit(next, nondirtybitmap);
-          dirty_flag = test_bit(next, bitmap);
-          if ((dirty_flag == true)&&(nondirty_flag == false)){
+      }
+      else{
+
+        nondirtybitmap = atomic_rcu_read(&migration_bitmap_rcu)->nondirtybmap;
+        do{
+          next = nr + 1;
+
+          if(next < size){
+            nondirty_flag = test_bit(next, nondirtybitmap);
+            dirty_flag = test_bit(next, bitmap);
+            if ((dirty_flag == true)&&(nondirty_flag == false)){
         	  dirtybit_found = true;
-          }
-          else{
+            }
+            else{
         	  //nr = next + 1;
         	  nr = next;
+            }
           }
-        }
-        else{
-    	  exceed_block_size = true;
-        }
-
-      }while(!exceed_block_size && !dirtybit_found);
+          else{
+    	    exceed_block_size = true;
+          }
+        }while(!exceed_block_size && !dirtybit_found);
+      }
 
     } else {
         next = find_next_bit(bitmap, size, nr);
@@ -1634,7 +1638,7 @@ err:
  * Returns: Number of pages written.
  */
 //MPLM debug
-int rstd_not_send_dirty = 0; 
+int rst_not_send_dirty = 0; 
 
 static int ram_save_target_dirty_page(MigrationState *ms, QEMUFile *f,
                                 PageSearchStatus *pss,
@@ -1676,7 +1680,7 @@ static int ram_save_target_dirty_page(MigrationState *ms, QEMUFile *f,
         }
     }
     else{
-        rstd_not_send_dirty++; 
+        rst_not_send_dirty++; 
     }
 
     return res;
@@ -1695,6 +1699,9 @@ static int ram_save_target_dirty_page(MigrationState *ms, QEMUFile *f,
  *
  * Returns: Number of pages written.
  */
+
+int rst_not_send_nondirty = 0; 
+
 static int ram_save_target_nondirty_page(MigrationState *ms, QEMUFile *f,
                                 PageSearchStatus *npss,
                                 bool last_stage,
@@ -1732,6 +1739,9 @@ static int ram_save_target_nondirty_page(MigrationState *ms, QEMUFile *f,
         if (res > 0) {
             last_sent_block = npss->block;
         }
+    }
+    else{
+        rst_not_send_nondirty++; 
     }
 
     return res;

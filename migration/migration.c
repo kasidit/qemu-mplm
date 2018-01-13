@@ -947,6 +947,7 @@ void qmp_migrate_start_postcopy(Error **errp)
 #define 	MPLM_OPTIONS_FIRST_ROUND_NONDIRTY	1
 // MPLM DEFAULTS
 #define		MPLM_DEFAULT_INV_INTERVAL		3
+#define         MPLM_DEFAULT_TX_CYCLE                   100
 #define		MPLM_DEFAULT_DIRTY_TRANS_PERCENTS	50
 
 // The flag is set at the first migration.
@@ -955,15 +956,21 @@ int             mplm_use_qmp = 0;
 uint8_t 	mplm_flag = 1;
 int 		mplm_type = MPLM_TWO_QUEUES;
 int 		mplm_options = MPLM_OPTIONS_FIRST_ROUND_NONDIRTY;
-int		mplm_interval = 3;	// in sec.
+
+// use in mplm_mplm_migration_bitmap_find_dirty
+#define         DEFAULT_NOT_ENFORCE_DIRT_TX_FLAG            1
+int             mplm_not_enforce_dirty_tx = DEFAULT_NOT_ENFORCE_DIRT_TX_FLAG; 
+
+int		mplm_interval = MPLM_DEFAULT_INV_INTERVAL;	// in sec.
 
 // MPLM
-int              mplm_send_counter = 0;
-int              mplm_send_cycle_size = 100;
-int              mplm_dirty_pages_sent;
-int              mplm_dirty_pages_allot = 50;
-int              mplm_nondirty_pages_sent;
-int              mplm_nondirty_pages_allot = 50;
+int             mplm_send_counter = 0;
+int             mplm_send_cycle_size = MPLM_DEFAULT_TX_CYCLE;
+int             mplm_dirty_pages_sent;
+int             mplm_dirty_pages_allot = MPLM_DEFAULT_DIRTY_TRANS_PERCENTS;
+int             mplm_nondirty_pages_sent;
+int             mplm_nondirty_pages_allot = 
+                  (MPLM_DEFAULT_TX_CYCLE - MPLM_DEFAULT_DIRTY_TRANS_PERCENTS);
 
 int64_t 	checked_mplm_nondirty_sent;
 int64_t 	lastchecked_mplm_nondirty_sent;
@@ -993,6 +1000,7 @@ void qmp_set_mplm_migration(bool enable, bool firstnondirty, int64_t intervaltim
         mplm_flag = 0;
         mplm_type = 0;
         mplm_options = 0;
+        mplm_not_enforce_dirty_tx = DEFAULT_NOT_ENFORCE_DIRT_TX_FLAG;
         mplm_interval = 0; 
         mplm_send_counter = 0;
         mplm_dirty_pages_allot = 0;
@@ -1002,28 +1010,43 @@ void qmp_set_mplm_migration(bool enable, bool firstnondirty, int64_t intervaltim
 
     if (enable) {
         if (!has_dirtypercents) {
-            dirtypercents = 50;
+            dirtypercents = MPLM_DEFAULT_DIRTY_TRANS_PERCENTS;
         }
         mplm_flag = 1; 
         mplm_type = MPLM_TWO_QUEUES;
         //mplm_type = MPLM_NO_QUEUE;
 
         mplm_send_counter = 0;
-        mplm_send_cycle_size = 100;
+        mplm_send_cycle_size = MPLM_DEFAULT_TX_CYCLE;
         mplm_dirty_pages_sent = 0;
         mplm_dirty_pages_allot = (int) dirtypercents;
         mplm_nondirty_pages_sent = 0;
-        mplm_nondirty_pages_allot = 100 - mplm_dirty_pages_allot;
+        mplm_nondirty_pages_allot = MPLM_DEFAULT_TX_CYCLE - mplm_dirty_pages_allot;
 
-        mplm_interval = (int) intervaltime; 
+// We use interval time to encode the NOT_ENFORCE_DIRTY_TX flag. 
+// If interval time is greater than 100, the NOT_ENFORCE_DIRTY_TX flag is false.
+// And, the intervaltime is intervaltine % 10. 
+// We usually use the default setting, this option is mainly for experiments. 
+
+        if(intervaltime < 100){ 
+            mplm_not_enforce_dirty_tx = 1; 
+            mplm_interval = (int) intervaltime; 
+        }
+        else{
+            mplm_not_enforce_dirty_tx = 0; 
+            mplm_interval = (int) (intervaltime % 10); 
+        }
 
         if (firstnondirty){
             mplm_options = MPLM_OPTIONS_FIRST_ROUND_NONDIRTY; 
+            mplm_not_enforce_dirty_tx = DEFAULT_NOT_ENFORCE_DIRT_TX_FLAG;
 
             printf("MPLM enabled with firstnondirty flag and interval %d and %d percents of dirty pages per cycle\n", mplm_interval, mplm_dirty_pages_allot); 
         }
         else{
             mplm_options = MPLM_OPTIONS_NONE; 
+            mplm_not_enforce_dirty_tx = 1; 
+
             printf("MPLM enabled WITHOUT firstnondirty flag interval %d and %d percents of dirty pages per cycle\n", mplm_interval, mplm_dirty_pages_allot); 
         }
     } else {
@@ -1031,6 +1054,7 @@ void qmp_set_mplm_migration(bool enable, bool firstnondirty, int64_t intervaltim
         mplm_flag = 0;
         mplm_type = 0;
         mplm_options = 0;
+        mplm_not_enforce_dirty_tx = DEFAULT_NOT_ENFORCE_DIRT_TX_FLAG;
         mplm_interval = 0; 
         mplm_send_counter = 0;
         mplm_dirty_pages_allot = 0;
@@ -1236,14 +1260,16 @@ MigrationState *migrate_init(const MigrationParams *params)
       mplm_type = MPLM_TWO_QUEUES;
 
       mplm_send_counter = 0;
-      mplm_send_cycle_size = 100;
+      mplm_send_cycle_size = MPLM_DEFAULT_TX_CYCLE;
       mplm_dirty_pages_sent = 0;
       mplm_dirty_pages_allot = MPLM_DEFAULT_DIRTY_TRANS_PERCENTS;
       mplm_nondirty_pages_sent = 0;
-      mplm_nondirty_pages_allot = 100 - mplm_dirty_pages_allot;
+      mplm_nondirty_pages_allot = MPLM_DEFAULT_TX_CYCLE - mplm_dirty_pages_allot;
 
       mplm_interval = MPLM_DEFAULT_INV_INTERVAL; 
       mplm_options = MPLM_OPTIONS_FIRST_ROUND_NONDIRTY; 
+
+      mplm_not_enforce_dirty_tx = DEFAULT_NOT_ENFORCE_DIRT_TX_FLAG;
     }
     else{
       mplm_use_qmp = 0; 
@@ -2072,11 +2098,8 @@ static int mplm_ending_conditions_met(void)
  * It drives the migration and pumps the data down the outgoing channel.
  */
 
-extern int rstd_not_send_dirty; 
-extern int debugnext_dirty;
-extern int debugnext_not_dirty;
-extern int next_dirty;
-extern int next_not_dirty;
+extern int rst_not_send_nondirty; 
+extern int rst_not_send_dirty; 
 
 static void *migration_thread(void *opaque)
 {
@@ -2164,7 +2187,7 @@ static void *migration_thread(void *opaque)
                     double nondirty_percents = 0.0; 
                     nondirty_percents = (double)(checked_mplm_nondirty_sent)/
 		      (double)(checked_mplm_dirty_sent+checked_mplm_nondirty_sent);
-       		    printf(" LastAccumulated TxNondirtyFSMcount= %"PRId64" (%"PRId64" increase) DirtyFSMcount=%"PRId64" (%"PRId64" added) NondirtyFSMcount Percents is %lf \n", 
+       		    printf(" LastAccumulated TxNondirtyFSMlookfor= %"PRId64" (%"PRId64" increase) DirtyFSMlookfor=%"PRId64" (%"PRId64" added) NondirtyFSMlookfor Percents is %lf \n", 
                       checked_mplm_nondirty_sent, 
                       (checked_mplm_nondirty_sent - lastchecked_mplm_nondirty_sent), 
                       checked_mplm_dirty_sent, 
@@ -2173,7 +2196,7 @@ static void *migration_thread(void *opaque)
         	    fflush(stdout);
                   }
                   else{
-       		    printf(" ERROR: NondirtyFSMcount= %"PRId64" DirtyFSMcount=%"PRId64 " \n", 
+       		    printf(" ERROR: NondirtyFSMlookfor= %"PRId64" DirtyFSMlookfor=%"PRId64 " \n", 
                                checked_mplm_nondirty_sent, checked_mplm_dirty_sent);
         	    fflush(stdout);
                   }
@@ -2182,13 +2205,18 @@ static void *migration_thread(void *opaque)
                     double nondirty_real_percents = 0.0; 
                     nondirty_real_percents = (double)(real_mplm_nondirty_sent)/
 		      (double)(real_mplm_dirty_sent+real_mplm_nondirty_sent);
-       		    printf(" LastAccumulated TxNondirtyFSMreal= %"PRId64" (%"PRId64" increase) TxDirtyFSMreal=%"PRId64 " NondirtyFSMreal (%"PRId64" increase) Percents is %lf \n\n", 
+       		    printf(" LastAccumulated TxNondirtyFSMreal= %"PRId64" (%"PRId64" increase) TxDirtyFSMreal=%"PRId64 " NondirtyFSMreal (%"PRId64" increase) Percents is %lf, NotSendDirt %d NotSendNonDirt %d\n\n", 
                       real_mplm_nondirty_sent, 
                       (real_mplm_nondirty_sent - lastreal_mplm_nondirty_sent), 
                       real_mplm_dirty_sent, 
                       (real_mplm_dirty_sent - lastreal_mplm_dirty_sent),
-                      nondirty_real_percents);
+                      nondirty_real_percents,
+                      rst_not_send_dirty, 
+                      rst_not_send_nondirty);
         	    fflush(stdout);
+
+                    rst_not_send_dirty = 0; 
+                    rst_not_send_nondirty = 0; 
                   }
                   else{
        		    printf(" ERROR: NondirtyFSMreal= %"PRId64" DirtyFSMreal=%"PRId64 " \n", 
@@ -2233,7 +2261,7 @@ static void *migration_thread(void *opaque)
                 double nondirty_percents = 0.0; 
                 nondirty_percents = (double)(checked_mplm_nondirty_sent)/
 		  (double)(checked_mplm_dirty_sent+checked_mplm_nondirty_sent);
-       		printf(" Accumulated TxNondirtyFSMcount= %"PRId64" (%"PRId64" increase) TxDirtyFSMcount=%"PRId64" (%"PRId64" increase) NondirtyFSMcount Percents is %lf \n", 
+       		printf(" Accumulated TxNondirtyFSMlookfor= %"PRId64" (%"PRId64" increase) TxDirtyFSMlookfor=%"PRId64" (%"PRId64" increase) NondirtyFSMlookfor Percents is %lf \n", 
                       checked_mplm_nondirty_sent, 
                       (checked_mplm_nondirty_sent - lastchecked_mplm_nondirty_sent), 
                       checked_mplm_dirty_sent, 
@@ -2242,7 +2270,7 @@ static void *migration_thread(void *opaque)
         	fflush(stdout);
               }
               else{
-       	        printf(" ERROR: NondirtyFSMcount= %"PRId64" DirtyFSMcount=%"PRId64 " \n", 
+       	        printf(" ERROR: NondirtyFSMlookfor= %"PRId64" DirtyFSMlookfor=%"PRId64 " \n", 
                        checked_mplm_nondirty_sent, checked_mplm_dirty_sent);
                 fflush(stdout);
               }
@@ -2253,16 +2281,18 @@ static void *migration_thread(void *opaque)
                 double nondirty_real_percents = 0.0; 
                 nondirty_real_percents = (double)(real_mplm_nondirty_sent)/
 	           (double)(real_mplm_dirty_sent+real_mplm_nondirty_sent);
-       		printf(" Accumulated TxNondirtyFSMreal= %"PRId64" (%"PRId64" increase) TxDirtyFSMreal=%"PRId64 " (%"PRId64" increase) NondirtyFSMreal Percents is %lf \n DEBUG: rstd_not_send_dirt %d nextNotdirt %d nextDirt %d \n ImnextNotdirt %d ImnextDirt %d \n\n", 
+       		printf(" Accumulated TxNondirtyFSMreal= %"PRId64" (%"PRId64" increase) TxDirtyFSMreal=%"PRId64 " (%"PRId64" increase) NondirtyFSMreal Percents is %lf \n NotSendDirt %d NotSendNonDirt %d\n\n", 
                       real_mplm_nondirty_sent, 
                       (real_mplm_nondirty_sent - lastreal_mplm_nondirty_sent), 
                       real_mplm_dirty_sent, 
                       (real_mplm_dirty_sent - lastreal_mplm_dirty_sent),
                       nondirty_real_percents, 
-                      rstd_not_send_dirty, 
-                      debugnext_not_dirty, debugnext_dirty,
-                      next_not_dirty, next_dirty);
+                      rst_not_send_dirty, 
+                      rst_not_send_nondirty);
         	fflush(stdout);
+
+                rst_not_send_dirty = 0; 
+                rst_not_send_nondirty = 0; 
               }
               else{
        	        printf(" ERROR: NondirtyFSMreal= %"PRId64" DirtyFSMreal=%"PRId64 " \n", 
