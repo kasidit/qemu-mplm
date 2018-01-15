@@ -7,5 +7,6 @@ sudo ${binloc}/qemu-system-x86_64 -enable-kvm -cpu host -smp 4 -m 16G \
   -qmp unix:./qmp-sock-9666,server,nowait \
   -monitor tcp::9666,server,nowait \
   -net nic -net user \
+  -incoming defer \
   -localtime | tee migreport.txt 
 #  -localtime > migreport.txt &

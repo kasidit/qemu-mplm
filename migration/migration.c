@@ -1347,6 +1347,10 @@ void qmp_migrate_incoming(const char *uri, Error **errp)
         error_setg(errp, "The incoming migration has already been started");
     }
 
+    // MPLM
+    printf("qmp_migrate_incoming: Start incoming migration!\n"); 
+    fflush(stdout); 
+
     qemu_start_incoming_migration(uri, &local_err);
 
     if (local_err) {
@@ -1379,6 +1383,10 @@ void qmp_migrate(const char *uri, bool has_blk, bool blk,
     MigrationState *s = migrate_get_current();
     MigrationParams params;
     const char *p;
+
+    // MPLM
+    printf("qmp_migrate: Start performing migration!\n"); 
+    fflush(stdout); 
 
     params.blk = has_blk && blk;
     params.shared = has_inc && inc;
@@ -2132,8 +2140,8 @@ static void *migration_thread(void *opaque)
 
     while (s->state == MIGRATION_STATUS_ACTIVE ||
            s->state == MIGRATION_STATUS_POSTCOPY_ACTIVE) {
-        int64_t current_time;
-        uint64_t pending_size;
+        int64_t current_time = 0;
+        uint64_t pending_size = 0;
 
         if (!qemu_file_rate_limit(s->to_dst_file)) {
             uint64_t pend_post, pend_nonpost;
@@ -2159,12 +2167,15 @@ static void *migration_thread(void *opaque)
 
                     continue;
                 }
+
                 /* Just another iteration step */
                 qemu_savevm_state_iterate(s->to_dst_file, entered_postcopy);
             } else {
                 trace_migration_thread_low_pending(pending_size);
 
 		// MPLM report tx pages
+                if(mplm_flag){
+
                 if(mplm_type == MPLM_TWO_QUEUES){
                   printf(" pending_size = %"PRId64" pending_pages = %lf\n", 
                   pending_size, (double)((double)pending_size/(double)4096));  
@@ -2211,6 +2222,7 @@ static void *migration_thread(void *opaque)
                   }
                 }
                 // MPLM report end
+                }
 
                 migration_completion(s, current_active_state,
                                      &old_vm_running, &start_time);
@@ -2226,6 +2238,8 @@ static void *migration_thread(void *opaque)
         }
         current_time = qemu_clock_get_ms(QEMU_CLOCK_REALTIME);
         // MPLM
+        if(mplm_flag){
+
         if (mplm_bitmap_sync_flag){
             int64_t mplm_bitmap_sync_interval = 0;
             if(mplm_bitmap_sync_time == 0){
@@ -2239,6 +2253,8 @@ static void *migration_thread(void *opaque)
             }
 
        	    printf("<%d> mplm_bitmap_sync_interval = %"PRId64" ms \n", mplm_debug_i, mplm_bitmap_sync_interval);
+            printf(" pending_size = %"PRId64" pending_pages = %lf\n", 
+              pending_size, (double)((double)pending_size/(double)4096));  
             fflush(stdout);
 
 	    // MPLM report tx pages
@@ -2288,8 +2304,10 @@ static void *migration_thread(void *opaque)
               lastreal_mplm_nondirty_sent = real_mplm_nondirty_sent; 
               lastreal_mplm_dirty_sent = real_mplm_dirty_sent;
             }
-        // MPLM report end
         }
+        // MPLM report end
+        } // mplm_flag
+
         if (current_time >= initial_time + BUFFER_DELAY) {
             uint64_t transferred_bytes = qemu_ftell(s->to_dst_file) -
                                          initial_bytes;

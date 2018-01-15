@@ -1,0 +1,11 @@
+MPLM modification has been made in the following files. 
+
+qemu-mplm directory: 
+- hmp.c
+
+qemu-mplm/migration directory: 
+- migration.c 
+- ram.c
+
+qemu-mplm/include/exec directory: 
+- ram-addr.h
