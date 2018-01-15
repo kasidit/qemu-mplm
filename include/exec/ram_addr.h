@@ -542,6 +542,7 @@ uint64_t mplm_next_cpu_physical_memory_sync_dirty_bitmap(unsigned long *dest,
                 unsigned long bits = atomic_xchg(&src[idx][offset], 0);
                 unsigned long new_dirty;
                 unsigned long new_nondirty;
+
                 sync_real_dirty_pages += ctpopl(bits);
                 new_dirty = ~dest[k];
                 dest[k] |= bits;
@@ -579,6 +580,7 @@ uint64_t mplm_next_cpu_physical_memory_sync_dirty_bitmap(unsigned long *dest,
                         start + addr,
                         TARGET_PAGE_SIZE,
                         DIRTY_MEMORY_MIGRATION)) {
+
                 sync_real_dirty_pages += 1;
                 if (!test_and_set_bit(k, dest)) {
                     num_dirty++;

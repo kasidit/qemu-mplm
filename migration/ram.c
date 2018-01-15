@@ -621,8 +621,8 @@ ram_addr_t migration_bitmap_find_dirty(RAMBlock *rb,
     return (next - base) << TARGET_PAGE_BITS;
 }
 
-// this is helpful to the experiment contraller. 
-extern int mplm_not_enforce_dirty_tx; 
+// MPLM
+extern int mplm_relax_dirty_tx; 
 
 static inline
 ram_addr_t mplm_migration_bitmap_find_dirty(RAMBlock *rb,
@@ -635,7 +635,6 @@ ram_addr_t mplm_migration_bitmap_find_dirty(RAMBlock *rb,
     unsigned long size = base + (rb_size >> TARGET_PAGE_BITS);
     unsigned long *bitmap;
     unsigned long *nondirtybitmap;
-
     unsigned long next;
     bool nondirty_flag = false;
     bool dirty_flag = false;
@@ -646,7 +645,7 @@ ram_addr_t mplm_migration_bitmap_find_dirty(RAMBlock *rb,
 
     if (ram_bulk_stage && nr > base) {
 
-      if(mplm_not_enforce_dirty_tx){
+      if(mplm_relax_dirty_tx){
 
         next = nr + 1;
 
@@ -742,7 +741,7 @@ ram_addr_t mplm_migration_bitmap_find_nondirty(RAMBlock *rb,
     return (next - base) << TARGET_PAGE_BITS;
 }
 
-// use this when the nondirty page is sent
+// MPLM 
 static inline bool migration_bitmap_clear_nondirty(ram_addr_t addr)
 {
     bool ret;
@@ -757,6 +756,7 @@ static inline bool migration_bitmap_clear_nondirty(ram_addr_t addr)
     return ret;
 }
 
+// MPLM
 static inline bool migration_bitmap_clear_dirty(ram_addr_t addr)
 {
     bool ret;
@@ -772,7 +772,10 @@ static inline bool migration_bitmap_clear_dirty(ram_addr_t addr)
 }
 
 static int64_t num_dirty_pages_period;
+
 /*
+// This is the original pre-copy. 
+//
 static void migration_bitmap_sync_range(ram_addr_t start, ram_addr_t length)
 {
     unsigned long *bitmap;
@@ -781,19 +784,19 @@ static void migration_bitmap_sync_range(ram_addr_t start, ram_addr_t length)
                              start, length, &num_dirty_pages_period);
 }
 */
+
 static void mplm_migration_bitmap_sync_range(int first_sync, ram_addr_t start, ram_addr_t length)
-//static void migration_bitmap_sync_range(ram_addr_t start, ram_addr_t length)
 {
     unsigned long *bitmap, *nondirtybitmap;
-    //uint64_t tmp_nondirty_pages = 0; 
 
     bitmap = atomic_rcu_read(&migration_bitmap_rcu)->bmap;
     nondirtybitmap = atomic_rcu_read(&migration_bitmap_rcu)->nondirtybmap;
 
     // 
-    // migration_dirty_pages represents the pre-copy dirty pages. We still use this for pre-copy's 
-    // ending condition. MPLM dirty page counts are represented by the mplm_num_nondirty_pages 
-    // and current_num_nondirty_pages variables. 
+    // The migration_dirty_pages represents the pre-copy dirty pages. 
+    // We still use it for pre-copy's ending condition. 
+    // For MPLM, we use the current_num_nondirty_pages variable to decide 
+    // when live migration end. 
     //
     if(first_sync){
         migration_dirty_pages += mplm_first_cpu_physical_memory_sync_dirty_bitmap(
@@ -2896,6 +2899,23 @@ static int ram_save_complete(QEMUFile *f, void *opaque)
     return 0;
 }
 
+// MPLM
+static int mplm_ending_conditions(void){
+
+    // MPLM ending condition. For now, we use current_num_nondirty_pages. 
+    // However, mplm_num_nondirty_pages can be used as well. 
+    // 
+    // In the future, we may expand the conditions here to accommodate 
+    // some advanced resource management policies.
+    //
+    if(current_num_nondirty_pages == 0){  
+      return 1; 
+    }
+    else{
+      return 0;
+    }
+}
+
 static void ram_save_pending(QEMUFile *f, void *opaque, uint64_t max_size,
                              uint64_t *non_postcopiable_pending,
                              uint64_t *postcopiable_pending)
@@ -2907,6 +2927,7 @@ static void ram_save_pending(QEMUFile *f, void *opaque, uint64_t max_size,
     if(mplm_flag){
     	if (!migration_in_postcopy(migrate_get_current()) &&
     		((remaining_size < max_size)||(mplm_bitmap_sync_flag))) {
+
     		qemu_mutex_lock_iothread();
     		rcu_read_lock();
     		migration_bitmap_sync(0);
@@ -2915,7 +2936,8 @@ static void ram_save_pending(QEMUFile *f, void *opaque, uint64_t max_size,
     		qemu_mutex_unlock_iothread();
     		remaining_size = ram_save_remaining() * TARGET_PAGE_SIZE;
 
-                if(current_num_nondirty_pages == 0){ // MPLM
+                if(mplm_ending_conditions()){ // MPLM ending condition
+
                   mplm_live_migration_stage_finish = 1;
                   printf("pending: mplm_live_migration_stage_finish is ON\n"); 
                   fflush(stdout); 
@@ -2925,6 +2947,7 @@ static void ram_save_pending(QEMUFile *f, void *opaque, uint64_t max_size,
     else{
     	if (!migration_in_postcopy(migrate_get_current()) &&
     		remaining_size < max_size) {
+
     		qemu_mutex_lock_iothread();
     		rcu_read_lock();
     		migration_bitmap_sync(0);

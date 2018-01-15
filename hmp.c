@@ -1293,33 +1293,33 @@ void hmp_drive_mirror(Monitor *mon, const QDict *qdict)
     qmp_drive_mirror(&mirror, &err);
     hmp_handle_error(mon, &err);
 }
-
+// MPLM modification begin
 void hmp_set_mplm_migration(Monitor *mon, const QDict *qdict)
 {
-    int64_t intervaltime = qdict_get_int(qdict, "intval");
-    // We define the default dirtypercents to 50. We will pass this value to qmp_set_mplm_migration
-    // even though no dirtypercent value is given from users. 
-    int64_t dirtypercents = qdict_get_try_int(qdict, "dirtypercents", 50);
-    bool disable = qdict_get_try_bool(qdict, "disable", false);
+    int64_t intervaltime = qdict_get_int(qdict, "intervaltime");
+    int64_t dirtypercents = qdict_get_int(qdict, "dirtypercents");
+    bool enable = qdict_get_try_bool(qdict, "enable", false);
     bool firstnondirty = qdict_get_try_bool(qdict, "firstnondirty", false);
+    bool relaxlivemig = qdict_get_try_bool(qdict, "relaxlivemig", false);
     Error *err = NULL;
 
 
-    if(!disable){
+    if(enable){
       if(firstnondirty){
-        printf("Enable firstNondirty Intval = %"PRId64 " dirtypercents = %"PRId64 "\n", intervaltime, dirtypercents); 
+        printf("MPLM enabled firstNondirty intervaltime = %"PRId64 " dirtypercents = %"PRId64 " relaxlivemig = %d \n", intervaltime, dirtypercents, (int)relaxlivemig); 
       }
       else{
-        printf("Enable firstDirty Intval = %"PRId64 " dirtypercents = %"PRId64 "\n", intervaltime, dirtypercents); 
+        printf("MPLM enabled firstRoundDirty intervaltime = %"PRId64 " dirtypercents = %"PRId64 " relaxlivemig = %d\n", intervaltime, dirtypercents, (int)relaxlivemig); 
       }
     }
     else{
-        printf("Disable Intval = %"PRId64 " dirtypercents = %"PRId64 "\n", intervaltime, dirtypercents); 
+        printf("MPLM disable (not in use: intervaltime = %"PRId64 " dirtypercents = %"PRId64 ")\n", intervaltime, dirtypercents); 
     }
 
-    qmp_set_mplm_migration(!disable, firstnondirty, intervaltime, true, dirtypercents, &err);
+    qmp_set_mplm_migration(enable, firstnondirty, intervaltime, relaxlivemig, dirtypercents, &err);
     hmp_handle_error(mon, &err);
 }
+// MPLM modification end
 
 void hmp_drive_backup(Monitor *mon, const QDict *qdict)
 {

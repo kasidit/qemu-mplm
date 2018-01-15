@@ -958,8 +958,8 @@ int 		mplm_type = MPLM_TWO_QUEUES;
 int 		mplm_options = MPLM_OPTIONS_FIRST_ROUND_NONDIRTY;
 
 // use in mplm_mplm_migration_bitmap_find_dirty
-#define         DEFAULT_NOT_ENFORCE_DIRT_TX_FLAG            1
-int             mplm_not_enforce_dirty_tx = DEFAULT_NOT_ENFORCE_DIRT_TX_FLAG; 
+#define         DEFAULT_RELAX_DIRT_TX_FLAG            1
+int             mplm_relax_dirty_tx = DEFAULT_RELAX_DIRT_TX_FLAG; 
 
 int		mplm_interval = MPLM_DEFAULT_INV_INTERVAL;	// in sec.
 
@@ -990,28 +990,13 @@ uint64_t	mplm_bitmap_sync_time = 0;
 int 		mplm_debug_i = 0;
 
 // MPLM
-void qmp_set_mplm_migration(bool enable, bool firstnondirty, int64_t intervaltime, bool has_dirtypercents, int64_t dirtypercents, Error **errp)
+void qmp_set_mplm_migration(bool enable, bool firstnondirty, int64_t intervaltime, 
+       bool relaxlivemig, int64_t dirtypercents, Error **errp)
 {
     mplm_use_qmp = 1; 
 
-    if (has_dirtypercents && !enable) {
-        error_setg(errp, "Parameter 'dirtypercents' is only for"
-                   " enabling MPLM migration");
-        mplm_flag = 0;
-        mplm_type = 0;
-        mplm_options = 0;
-        mplm_not_enforce_dirty_tx = DEFAULT_NOT_ENFORCE_DIRT_TX_FLAG;
-        mplm_interval = 0; 
-        mplm_send_counter = 0;
-        mplm_dirty_pages_allot = 0;
-        mplm_nondirty_pages_sent = 0;
-        return;
-    }
-
     if (enable) {
-        if (!has_dirtypercents) {
-            dirtypercents = MPLM_DEFAULT_DIRTY_TRANS_PERCENTS;
-        }
+
         mplm_flag = 1; 
         mplm_type = MPLM_TWO_QUEUES;
         //mplm_type = MPLM_NO_QUEUE;
@@ -1023,38 +1008,31 @@ void qmp_set_mplm_migration(bool enable, bool firstnondirty, int64_t intervaltim
         mplm_nondirty_pages_sent = 0;
         mplm_nondirty_pages_allot = MPLM_DEFAULT_TX_CYCLE - mplm_dirty_pages_allot;
 
-// We use interval time to encode the NOT_ENFORCE_DIRTY_TX flag. 
-// If interval time is greater than 100, the NOT_ENFORCE_DIRTY_TX flag is false.
-// And, the intervaltime is intervaltine % 10. 
-// We usually use the default setting, this option is mainly for experiments. 
+        mplm_interval = (int) intervaltime; 
 
-        if(intervaltime < 100){ 
-            mplm_not_enforce_dirty_tx = 1; 
-            mplm_interval = (int) intervaltime; 
+        if(relaxlivemig){ 
+            mplm_relax_dirty_tx = 1; 
         }
         else{
-            mplm_not_enforce_dirty_tx = 0; 
-            mplm_interval = (int) (intervaltime % 10); 
+            mplm_relax_dirty_tx = 0; 
         }
 
         if (firstnondirty){
             mplm_options = MPLM_OPTIONS_FIRST_ROUND_NONDIRTY; 
-            mplm_not_enforce_dirty_tx = DEFAULT_NOT_ENFORCE_DIRT_TX_FLAG;
 
-            printf("MPLM enabled with firstnondirty flag and interval %d and %d percents of dirty pages per cycle\n", mplm_interval, mplm_dirty_pages_allot); 
+            printf("MPLM enabled with firstnondirty flag and interval %d and relax = %d\n and %d percents of dirty pages per cycle\n", mplm_interval, (int) relaxlivemig, mplm_dirty_pages_allot); 
         }
         else{
             mplm_options = MPLM_OPTIONS_NONE; 
-            mplm_not_enforce_dirty_tx = 1; 
 
-            printf("MPLM enabled WITHOUT firstnondirty flag interval %d and %d percents of dirty pages per cycle\n", mplm_interval, mplm_dirty_pages_allot); 
+            printf("MPLM enabled WITHOUT firstnondirty flag interval %d and relax = %d\n and %d percents of dirty pages per cycle\n", mplm_interval, (int) relaxlivemig, mplm_dirty_pages_allot); 
         }
     } else {
-        printf("MPLM disabled: Pre-copy is deployed.\n"); 
+        printf("MPLM disabled: Pre-copy mechanism is used.\n"); 
         mplm_flag = 0;
         mplm_type = 0;
         mplm_options = 0;
-        mplm_not_enforce_dirty_tx = DEFAULT_NOT_ENFORCE_DIRT_TX_FLAG;
+        mplm_relax_dirty_tx = DEFAULT_RELAX_DIRT_TX_FLAG;
         mplm_interval = 0; 
         mplm_send_counter = 0;
         mplm_dirty_pages_allot = 0;
@@ -1269,7 +1247,7 @@ MigrationState *migrate_init(const MigrationParams *params)
       mplm_interval = MPLM_DEFAULT_INV_INTERVAL; 
       mplm_options = MPLM_OPTIONS_FIRST_ROUND_NONDIRTY; 
 
-      mplm_not_enforce_dirty_tx = DEFAULT_NOT_ENFORCE_DIRT_TX_FLAG;
+      mplm_relax_dirty_tx = DEFAULT_RELAX_DIRT_TX_FLAG;
     }
     else{
       mplm_use_qmp = 0; 
@@ -1295,8 +1273,15 @@ MigrationState *migrate_init(const MigrationParams *params)
     mplm_bitmap_sync_time = 0;
 
     if(local_debug_flag){
-	printf("MPLM: flag = %d, mplm_interval = %d\n", mplm_flag, mplm_interval);
+	printf("Start MPLM migration\n\nMPLM: flag = %d, mplm_interval = %d\n", mplm_flag, mplm_interval);
 	fflush(stdout);
+
+        if (mplm_options == MPLM_OPTIONS_FIRST_ROUND_NONDIRTY){ 
+            printf("Performing MPLM with firstnondirty flag and interval %d and relax = %d\n with %d percents of dirty pages per cycle\n", mplm_interval, mplm_relax_dirty_tx, mplm_dirty_pages_allot); 
+        }
+        else{
+            printf("Performaing MPLM WITHOUT firstnondirty flag interval %d and relax = %d\n with %d percents of dirty pages per cycle\n", mplm_interval, mplm_relax_dirty_tx, mplm_dirty_pages_allot); 
+        }
     }
 
     migrate_set_state(&s->state, MIGRATION_STATUS_NONE, MIGRATION_STATUS_SETUP);
@@ -2183,6 +2168,7 @@ static void *migration_thread(void *opaque)
                 if(mplm_type == MPLM_TWO_QUEUES){
                   printf(" pending_size = %"PRId64" pending_pages = %lf\n", 
                   pending_size, (double)((double)pending_size/(double)4096));  
+
                   if((checked_mplm_nondirty_sent != 0) || (checked_mplm_dirty_sent != 0)){
                     double nondirty_percents = 0.0; 
                     nondirty_percents = (double)(checked_mplm_nondirty_sent)/

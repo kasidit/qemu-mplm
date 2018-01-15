@@ -6320,9 +6320,11 @@
 #
 # @enable: true to enable, false to disable.
 #
-# @firstnondirty: true to enable first epoch send only non dirty pages, false to disable.
+# @firstnondirty: true to enable first epoch send only non dirty pages, false to disable it.
 #
 # @intervaltime: MPLM interval duration.
+#
+# @relaxlivemig: true to relax dirty page tx, false otherwise.
 #
 # @dirtypercents: number of dirty pages in a hundread transmission.
 #
@@ -6331,10 +6333,10 @@
 # Example:
 #
 # -> { "execute": "set-mplm-migration",
-#      "arguments": {"enable": true, "firstnondirty": true, "intervaltime": 3, "dirtypercents": 50} }
+#      "arguments": {"enable": true, "firstnondirty": true, "intervaltime": 3, "relaxlivemig": true, "dirtypercents": 50} }
 # <- { "return": {} }
 #
 # Since: 2.9
 ##
 { 'command': 'set-mplm-migration',
-  'data': { 'enable': 'bool', 'firstnondirty': 'bool', 'intervaltime': 'int', '*dirtypercents': 'int' } }
+  'data': { 'enable': 'bool', 'firstnondirty': 'bool', 'intervaltime': 'int', 'relaxlivemig': 'bool', 'dirtypercents': 'int' } }

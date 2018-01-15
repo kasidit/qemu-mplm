@@ -1767,8 +1767,8 @@ ETEXI
 
     {
         .name       = "set-mplm-migration",
-        .args_type  = "disable:-n,firstnondirty:-f,intval:i,dirtypercents:i?",
-        .params     = "[-n] [-f] intval [dirtypercents]",
+        .args_type  = "enable:-n,firstnondirty:-f,relaxlivemig:-r,intervaltime:i,dirtypercents:i",
+        .params     = "[-n] [-f] [-r] intervaltime dirtypercents",
         .help       = "set mplm migration parameter",
         .cmd        = hmp_set_mplm_migration,
     },
