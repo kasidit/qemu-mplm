@@ -828,8 +828,10 @@ static uint64_t iterations_prev;
 #define S0_NonDirty    1
 #define S1_NonDirty    2
 #define S2_Dirty       3
+#define S3_Dirty       4
+#define S4_LiveMigEnd  5
 
-int rsb_state = S1_NonDirty; 
+int rsb_state = S0_NonDirty; 
 
 static void migration_bitmap_sync_init(void)
 {
@@ -895,7 +897,7 @@ static void migration_bitmap_sync(int first_sync)
     mplm_num_dirty_pages = 0;
     current_num_nondirty_pages = 0;
 
-    if(!first_sync){
+    if(!first_sync){ // do S0_NonDirty first during DU interval only
         if (rsb_state == S0_NonDirty) rsb_state = S1_NonDirty;  
     }
 
@@ -920,7 +922,7 @@ static void migration_bitmap_sync(int first_sync)
     qemu_mutex_unlock(&migration_bitmap_mutex);
 
 // MPLM
-    printf(" <> migration_bitmap_sync: \
+    printf("<> migration_bitmap_sync: \
 TotalPages %" PRId64 " \
 DirtPagesPeriod %" PRId64 " \
 DirtPagesCnt %" PRId64 " \
@@ -1875,8 +1877,11 @@ static int ram_find_and_save_block(QEMUFile *f, bool last_stage,
         return pages;
     }
 
-    // MPLM  Live Stage of the TWOQ option
-    if((last_stage == false) && (mplm_type == MPLM_TWO_QUEUES)){ // TWOQ
+    if((mplm_flag) &&
+       (mplm_type == MPLM_TWO_QUEUES) &&
+       (last_stage == false) &&
+       (rsb_state != S4_LiveMigEnd) 
+      ){ // if during  MPLM  Live Stage under the TWOQ option, perform below. 
 
       do {
           again = true;
@@ -2012,13 +2017,48 @@ static int ram_find_and_save_block(QEMUFile *f, bool last_stage,
 //  fflush(stdout);  
                   break;
 
+                case S3_Dirty: 
+
+                  pss.block = last_seen_block;
+                  pss.offset = last_offset;
+                  pss.complete_round = false;
+
+                  if (!pss.block) {
+                    pss.block = QLIST_FIRST_RCU(&ram_list.blocks);
+                  }
+
+                  do {
+                    again = true;
+                    found = get_queued_page(ms, &pss, &dirty_ram_abs);
+
+                    if (!found) {
+                      /* priority queue empty, so just search for something dirty */
+                      found = find_dirty_block(f, &pss, &again, &dirty_ram_abs);
+
+                      checked_mplm_dirty_sent++; // MPLM
+                    }
+
+                    if (found) {
+                      pages = ram_save_host_dirty_page(ms, f, &pss,
+                                       last_stage, bytes_transferred,
+                                       dirty_ram_abs);
+
+	              if(pages != 0) real_mplm_dirty_sent++; 
+                    }
+                  } while (!pages && again);
+
+                  last_seen_block = pss.block;
+                  last_offset = pss.offset;
+
+                  break;
+
               }
           }
 
       } while (!pages && again);
 
     }
-    else{ // last_stage should enter here
+    else{ // if not MPLM or not during mplm live migration, execute below.
 
       pss.block = last_seen_block;
       pss.offset = last_offset;
@@ -2737,8 +2777,9 @@ static int ram_save_iterate(QEMUFile *f, void *opaque)
     	last_t0 = t0;
     }
     num_enter_ram_save_iterate++;
+
     if(mplm_flag){
-    	if(mplm_wakeup_time.tv_sec == 0){
+    	if(mplm_wakeup_time.tv_sec == 0){ // first time only
     		// set mplm wake up time
     		gettimeofday(&mplm_wakeup_time, NULL);
     		printf("RSI: mplm_wakeup_time sec %"PRId64 " usec %" PRId64 "\n",
@@ -2749,18 +2790,19 @@ static int ram_save_iterate(QEMUFile *f, void *opaque)
     		fflush(stdout);
     	}
     }
+
     i = 0;
     while ((ret = qemu_file_rate_limit(f)) == 0) {
         int pages;
 
         pages = ram_find_and_save_block(f, false, &bytes_transferred);
+
         /* no more pages to sent */
         if (pages == 0) {
             done = 1;
             accum_i = 0; 
             break_code = 1; // MPLM
             mplm_bitmap_sync_flag = 1; // this will cause pending to call mig_bit_sync and decide to finish or not
-
             printf("RSI: set bitmap sync flag; out of while loop\n"); 
             fflush(stdout); 
             break;
@@ -2773,11 +2815,13 @@ static int ram_save_iterate(QEMUFile *f, void *opaque)
            iterations
         */
         if ((i & 63) == 0) {
-        	uint64_t t1 = (qemu_clock_get_ns(QEMU_CLOCK_REALTIME) - t0) / 1000000;
+
+            uint64_t t1 = (qemu_clock_get_ns(QEMU_CLOCK_REALTIME) - t0) / 1000000;
             if (t1 > MAX_WAIT) {
                 trace_ram_save_iterate_big_wait(t1, i);
                	break_code = 2; // MPLM debug
             }
+
             // MPLM
             if(mplm_flag){
               	struct timeval t_cur;
@@ -2899,17 +2943,57 @@ static int ram_save_complete(QEMUFile *f, void *opaque)
     return 0;
 }
 
-// MPLM
-static int mplm_ending_conditions(void){
+// The default value is 0.
+int mplm_extend_live_migration_flag = 0; 
 
-    // MPLM ending condition. For now, we use current_num_nondirty_pages. 
-    // However, mplm_num_nondirty_pages can be used as well. 
+extern int qmp_mplm_extend_live_migration; 
+
+int mplm_extend_live_migration(void); 
+
+// This function is called after the main thread checks for 
+// pending ram size. The only place that the mplm_extend_live_mig_flag 
+// changes its value is in the ram_save_pending() function below. 
+
+int mplm_extend_live_migration(void){
+
+    return mplm_extend_live_migration_flag; 
+
+}
+
+// This is for mplm testing only
+//int mplm_testing_i = 0; 
+
+// MPLM
+static int mplm_live_ending_conditions(void){
+
+    // MPLM ending condition. We can use either the current_num_nondirty_pages or 
+    // mplm_num_nondirty_pages for this, but will use the former for now.  
     // 
-    // In the future, we may expand the conditions here to accommodate 
-    // some advanced resource management policies.
+    // The mplm_extend_live_migration_flag == 1 causes this function
+    // to return 0 even though there are no nondirty pages left.   
     //
     if(current_num_nondirty_pages == 0){  
-      return 1; 
+
+// testing
+//if(mplm_testing_i == 5){
+//   qmp_mplm_extend_live_migration = 0; 
+//}
+//else{
+//   mplm_testing_i++; 
+//}
+
+      if(mplm_extend_live_migration_flag){
+
+        rsb_state = S3_Dirty; 
+        return 0; 
+
+      }
+      else{
+
+        rsb_state = S4_LiveMigEnd; 
+        return 1; 
+
+      }
     }
     else{
       return 0;
@@ -2932,15 +3016,25 @@ static void ram_save_pending(QEMUFile *f, void *opaque, uint64_t max_size,
     		rcu_read_lock();
     		migration_bitmap_sync(0);
     		mplm_bitmap_sync_flag = 0; // MPLM reset
+
+                // At this point, the iothread stops, so we copy the value of  
+                // qmp_extend_live_migration_flag variable to our 
+                // mplm_extend_live_migration_flag variable to be used by 
+                // the migration thread. (This avoids race condition.) 
+
+                mplm_extend_live_migration_flag = qmp_mplm_extend_live_migration; 
+
     		rcu_read_unlock();
     		qemu_mutex_unlock_iothread();
+
     		remaining_size = ram_save_remaining() * TARGET_PAGE_SIZE;
 
-                if(mplm_ending_conditions()){ // MPLM ending condition
-
+                // MPLM ending condition: basically, (!mig_extend)and(no more nondirty)
+                if(mplm_live_ending_conditions()){ 
                   mplm_live_migration_stage_finish = 1;
                   printf("pending: mplm_live_migration_stage_finish is ON\n"); 
                   fflush(stdout); 
+
                 }
     	}
     }

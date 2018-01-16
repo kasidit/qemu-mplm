@@ -1274,7 +1274,6 @@ MigrationState *migrate_init(const MigrationParams *params)
 
     if(local_debug_flag){
 	printf("Start MPLM migration\n\nMPLM: flag = %d, mplm_interval = %d\n", mplm_flag, mplm_interval);
-	fflush(stdout);
 
         if (mplm_options == MPLM_OPTIONS_FIRST_ROUND_NONDIRTY){ 
             printf("Performing MPLM with firstnondirty flag and interval %d and relax = %d\n with %d percents of dirty pages per cycle\n", mplm_interval, mplm_relax_dirty_tx, mplm_dirty_pages_allot); 
@@ -1282,6 +1281,8 @@ MigrationState *migrate_init(const MigrationParams *params)
         else{
             printf("Performaing MPLM WITHOUT firstnondirty flag interval %d and relax = %d\n with %d percents of dirty pages per cycle\n", mplm_interval, mplm_relax_dirty_tx, mplm_dirty_pages_allot); 
         }
+        printf("\n"); 
+	fflush(stdout);
     }
 
     migrate_set_state(&s->state, MIGRATION_STATUS_NONE, MIGRATION_STATUS_SETUP);
@@ -2068,7 +2069,7 @@ bool migrate_colo_enabled(void)
     return s->enabled_capabilities[MIGRATION_CAPABILITY_X_COLO];
 }
 // MPLM
-static int mplm_ending_conditions_met(void)
+static int finish_mplm_live_migration(void)
 {
     int ret = 0; 
 
@@ -2093,6 +2094,13 @@ static int mplm_ending_conditions_met(void)
 
 extern int rst_not_send_nondirty; 
 extern int rst_not_send_dirty; 
+
+// MPLM: this is the default value.
+int qmp_mplm_extend_live_migration = 0;
+// this is for testing only... normally it is 0
+//int qmp_mplm_extend_live_migration = 1; // MPLM testing
+
+extern int mplm_extend_live_migration(void);
 
 static void *migration_thread(void *opaque)
 {
@@ -2152,8 +2160,10 @@ static void *migration_thread(void *opaque)
             trace_migrate_pending(pending_size, max_size,
                                   pend_post, pend_nonpost);
 // MPLM
-            if (!(mplm_ending_conditions_met()) && pending_size && pending_size >= max_size) {
-                /* Still a significant amount to transfer */
+            if (
+                (mplm_extend_live_migration()) || 
+                (!(finish_mplm_live_migration()) && pending_size && pending_size >= max_size)
+               ) {
 
                 if (migrate_postcopy_ram() &&
                     s->state != MIGRATION_STATUS_POSTCOPY_ACTIVE &&
