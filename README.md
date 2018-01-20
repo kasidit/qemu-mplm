@@ -241,7 +241,7 @@ Performance statistices during the migration are reported in the migreport.txt. 
 <p> 
 During the migration, MPLM reports its operating status to the "migreport.txt" file. An example of the file 
 generated during a migration of a VM running the LU benchmark is provided at 
- <a href="migration/MPLM/migreport.txt">qemu-mplm/migration/MPLM/migreport.txt</a>. (Explanation coming soon!) 
+ <a href="">TBA</a>. (Explanation coming soon!) 
 <p>
 <a id="part3"><h3>3. Summary</h3></a>
 <p>
