@@ -2102,6 +2102,18 @@ int qmp_mplm_extend_live_migration = 0;
 
 extern int mplm_extend_live_migration(void);
 
+void qmp_set_mplm_extend_live(Error **errp)
+{
+    qmp_mplm_extend_live_migration = 1;
+    printf("Enable live migration extension capability! set extension var to 1.\n");
+}
+
+void qmp_set_mplm_end_live(Error **errp)
+{
+    qmp_mplm_extend_live_migration = 0;
+    printf("End live migration extension capability! set extension var to 0.\n");
+}
+
 static void *migration_thread(void *opaque)
 {
     MigrationState *s = opaque;

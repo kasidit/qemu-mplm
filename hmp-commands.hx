@@ -1779,6 +1779,32 @@ Set MPLM migration.
 ETEXI
 
     {
+        .name       = "set-mplm-extend-live",
+        .args_type  = "",
+        .params     = "",
+        .help       = "set mplm live migration extension",
+        .cmd        = hmp_set_mplm_extend_live,
+    },
+STEXI
+@item set-mplm-extend-live
+@findex set-mplm-extend-live
+Set MPLM live migration extension.
+ETEXI
+
+    {
+        .name       = "set-mplm-end-live",
+        .args_type  = "",
+        .params     = "",
+        .help       = "set mplm end live migration extension",
+        .cmd        = hmp_set_mplm_end_live,
+    },
+STEXI
+@item set-mplm-end-live
+@findex set-mplm-end-live
+Set MPLM end live migration extension.
+ETEXI
+
+    {
         .name       = "info",
         .args_type  = "item:s?",
         .params     = "[subcommand]",

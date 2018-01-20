@@ -1293,7 +1293,18 @@ void hmp_drive_mirror(Monitor *mon, const QDict *qdict)
     qmp_drive_mirror(&mirror, &err);
     hmp_handle_error(mon, &err);
 }
+
 // MPLM modification begin
+void hmp_set_mplm_extend_live(Monitor *mon, const QDict *qdict)
+{
+    qmp_set_mplm_extend_live(NULL);
+}
+
+void hmp_set_mplm_end_live(Monitor *mon, const QDict *qdict)
+{
+    qmp_set_mplm_end_live(NULL);
+}
+
 void hmp_set_mplm_migration(Monitor *mon, const QDict *qdict)
 {
     int64_t intervaltime = qdict_get_int(qdict, "intervaltime");

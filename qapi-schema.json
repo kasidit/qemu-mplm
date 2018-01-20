@@ -6340,3 +6340,35 @@
 ##
 { 'command': 'set-mplm-migration',
   'data': { 'enable': 'bool', 'firstnondirty': 'bool', 'intervaltime': 'int', 'relaxlivemig': 'bool', 'dirtypercents': 'int' } }
+
+##
+# @set-mplm-extend-live:
+#
+# This command tells mplm to extend live migration until the set-mplm-end-live is called.
+#
+# Returns: nothing.
+#
+# Example:
+#
+# -> { "execute": "set-mplm-extend-live" }
+# <- { "return": {} }
+#
+# Since 2.9
+##
+{ 'command': 'set-mplm-extend-live' }
+
+##
+# @set-mplm-end-live:
+#
+# This command tells mplm to stop live migration and enter downtime period.
+#
+# Returns: nothing.
+#
+# Example:
+#
+# -> { "execute": "set-mplm-end-live" }
+# <- { "return": {} }
+#
+# Since 2.9
+##
+{ 'command': 'set-mplm-end-live' }

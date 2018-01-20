@@ -139,5 +139,7 @@ void hmp_info_dump(Monitor *mon, const QDict *qdict);
 void hmp_hotpluggable_cpus(Monitor *mon, const QDict *qdict);
 void hmp_info_vm_generation_id(Monitor *mon, const QDict *qdict);
 void hmp_set_mplm_migration(Monitor *mon, const QDict *qdict);
+void hmp_set_mplm_extend_live(Monitor *mon, const QDict *qdict);
+void hmp_set_mplm_end_live(Monitor *mon, const QDict *qdict);
 
 #endif
