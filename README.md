@@ -291,11 +291,23 @@ MPLM will stop live migration stage and enter the last migration stage, the stop
 <p>
 MPLM operates under a set of configuration parameters. They are: 
 <ul>
- <li> <b>MPLM enable flag<b>: you can enable or disable MPLM algorithm. MPLM is eanled by default. By disabling it, 
+ <li> <b>MPLM-enable flag</b>: You can enable or disable MPLM algorithm. MPLM is eanled by default. By disabling it, 
   live migration mechanism will adopt the ending conditions of the pre-copy mechanism based on the maximum tolrerable 
   downtime rather than its own. Note that, although very similar, the migration operation under disabling MPLM mode is 
   not identical to that of the original pre-copy. 
- <li> 
+ <li> <b>Transmit-nondirty-pages-only-on-first-epoch flag</b>: During live migration, MPLM transfer memory pages in a serie of epoch.  
+  Each epoch last approximately 3 seconds. This flag instructs MPLM to transmit only nondirty pages in during the first epoch. MPLM 
+  will alternate the transfer of dirty and nondirty pages afterward. This flag is set by default. By resetting it, 
+  MPLM will multiplex the transfers of dirty and nondirty pages from the beginning. 
+ <li> <b>The length of an epoch interval</b>: This parameter defines how long an epoch of the live migration last. 
+  Its unit is a second. The default value is 3 seconds. 
+ <li> <b>Relaxed-memory-page-transmission flag</b>: This flag tells MPLM to relax its operation in finding dirty 
+  and nondirty pages to transfer to destination during live migration. Without this relaxation, MPLM will serach 
+  for dirty and nondirty pages in the bitmap data structures (which represent all dirty page information of VM memory) until 
+  one is found. Since this operation is costly, we relax the searching operation by allowing MPLM to skip the search for 
+  a particular type of a page in the data structures if the type of the current page it is inspecting does not 
+  match. This falg is enabled by default.
+  <li>
 </ul>
 You can change the configuration parameters of MPLM using. 
 <p>
