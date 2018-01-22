@@ -99,18 +99,21 @@ Next, I am going to invoke the tightVNC viewer client program on my notebook and
 <pre>
 $ echo quit | nc localhost 9666
 </pre>
-I am going to run the VM again with the command below. Notice that we set vcpu cores to 4 and memory size to 16GB. 
-<pre>
-$ sudo /home/kasidit/qemu-mplm-bin/bin/qemu-system-x86_64 -enable-kvm -cpu host -smp 4 <b>-m 16G</b> \
->  -drive file=/home/kasidit/images/ubuntu1604qcow2.img,format=qcow2 -boot c -vnc :95 -net nic -net user \
->  -monitor tcp::9666,server,nowait -localtime &
-$
-</pre>
 I recommend creating shell scripts for these commands. 
 <p>
 <i><a id="installAppOnVM"><h4>2.2 Install NPB on the VM</h4></a></i>
 <p>
-Next, I am going to log in to the VM via the VNC client. 
+ I am going to run the VM again with the command below. (See <a href="https://github.com/kasidit/qemu-mplm/blob/master/migration/MPLM/runKvmUserNet.sh">runKvmUserNet.sh</a>) Notice that we set vcpu cores to 4 and memory size to 16GB. 
+<pre>
+$ sudo /home/kasidit/qemu-mplm-bin/bin/qemu-system-x86_64 -enable-kvm -cpu host -smp 4 -m 16G \
+  -drive file=/home/kasidit/images/ubuntu1604qcow2.img,format=qcow2 -boot c -vnc :95 \
+  -qmp unix:./qmp-sock-9666,server,nowait \
+  -monitor tcp::9666,server,nowait \
+  -net nic -net user \
+  -localtime > migreport.txt &
+$
+</pre>
+Then, I am going to log in to the VM using a VNC client. 
 After loggin into the VM, we will install the <a href="https://www.nas.nasa.gov/publications/npb.html">NAS Parallel Benchmark (NPB) benchmark</a> on it. Assuming "vm$>" is the VM's command line prompt, we compile the OpenMP version of the kernel BT of the NAS benchmark with commands below.  
 <pre>
 vm$> sudo sed -i "s/us.arch/th.arch/g" /etc/apt/sources.list
@@ -195,6 +198,7 @@ to view the VM's console. This VM wait for a connection from a migraing VM on po
 <pre>
 $ sudo /home/kasidit/qemu-mplm-bin/bin/qemu-system-x86_64 -enable-kvm -cpu host -smp 4 -m 16G \
   -drive file=/home/kasidit/images/ubuntu1604qcow2.img,format=qcow2 -boot c -vnc :95 \
+  -qmp unix:./qmp-sock-9666,server,nowait \
   -monitor tcp::9666,server,nowait \
   -net nic -net user \
   -localtime \
@@ -210,6 +214,7 @@ $
 <pre>
 $ sudo /home/kasidit/qemu-mplm-bin/bin/qemu-system-x86_64 -enable-kvm -cpu host -smp 4 -m 16G \
   -drive file=/home/kasidit/images/ubuntu1604qcow2.img,format=qcow2 -boot c -vnc :95 \
+  -qmp unix:./qmp-sock-9666,server,nowait \
   -monitor tcp::9666,server,nowait \
   -net nic -net user \
   -localtime > migreport.txt &
@@ -244,6 +249,7 @@ You can also use QMP to send instruction to QEMU to perform a migraiton. If you 
 <pre>
 $ sudo /home/kasidit/qemu-mplm-bin/bin/qemu-system-x86_64 -enable-kvm -cpu host -smp 4 -m 16G \
   -drive file=/home/kasidit/images/ubuntu1604qcow2.img,format=qcow2 -boot c -vnc :95 \
+  -qmp unix:./qmp-sock-9666,server,nowait \
   -monitor tcp::9666,server,nowait \
   -net nic -net user \
   -localtime \
