@@ -277,6 +277,4 @@ generated during a migration of a VM running the LU benchmark is provided at
 <p>
 <a id="part3"><h3>3. Summary</h3></a>
 <p>
-We already show how to install and use MPLM for a migration. In the next step, we are going to 
-describe the performance results. We will also discuss the implementation issues such as 
-new data structures and code being added into Qemu.
+We have shown how to install and use MPLM for a migration. We plan to publish more information about MPLM including its designs and performance evaluation in a near future.  
