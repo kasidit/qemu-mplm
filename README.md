@@ -291,25 +291,41 @@ MPLM will stop live migration stage and enter the last migration stage, the stop
 <p>
 MPLM operates under a set of configuration parameters. They are: 
 <ul>
- <li> <b>MPLM-enable flag</b>: You can enable or disable MPLM algorithm. MPLM is eanled by default. By disabling it, 
+ <li> <b>MPLM-enable flag (denote "enable")</b>: You can enable or disable MPLM algorithm. MPLM is eanled by default. By disabling it, 
   live migration mechanism will adopt the ending conditions of the pre-copy mechanism based on the maximum tolrerable 
   downtime rather than its own. Note that, although very similar, the migration operation under disabling MPLM mode is 
   not identical to that of the original pre-copy. 
- <li> <b>Transmit-nondirty-pages-only-on-first-epoch flag</b>: During live migration, MPLM transfer memory pages in a serie of epoch.  
+ <li> <b>Transmit-nondirty-pages-only-on-first-epoch flag (denote "firstnondirty")</b>: During live migration, 
+  MPLM transfer memory pages in a serie of epoch.  
   Each epoch last approximately 3 seconds. This flag instructs MPLM to transmit only nondirty pages in during the first epoch. MPLM 
   will alternate the transfer of dirty and nondirty pages afterward. This flag is set by default. By resetting it, 
   MPLM will multiplex the transfers of dirty and nondirty pages from the beginning. 
- <li> <b>The length of an epoch interval</b>: This parameter defines how long an epoch of the live migration last. 
-  Its unit is a second. The default value is 3 seconds. 
- <li> <b>Relaxed-memory-page-transmission flag</b>: This flag tells MPLM to relax its operation in finding dirty 
+ <li> <b>The length of an epoch interval (denote "intervaltime")</b>: This parameter defines how long an epoch of 
+  the live migration last. Its unit is a second. The default value is 3 seconds. 
+ <li> <b>Relaxed-memory-page-transmission flag (denote "relaxlivemig")</b>: This flag tells MPLM to relax its operation in finding dirty 
   and nondirty pages to transfer to destination during live migration. Without this relaxation, MPLM will serach 
   for dirty and nondirty pages in the bitmap data structures (which represent all dirty page information of VM memory) until 
   one is found. Since this operation is costly, we relax the searching operation by allowing MPLM to skip the search for 
   a particular type of a page in the data structures if the type of the current page it is inspecting does not 
   match. This falg is enabled by default.
-  <li>
+ <li> <b>The percentage of the transmission of dirty pages during live migration (denote "dirtypercents")</b>: 
+  In a sequence of 100 pages MPLM transfers
+  to the destination during live migration, the number of dirty pages within those 100 pages is defined by this variable. 
+  The default value is 50. 
 </ul>
-You can change the configuration parameters of MPLM using. 
+You can change values of these parameters by running the following commands before starting a migration. 
+<pre>
+$ echo "{ \"execute\": \"qmp_capabilities\" } 
+      { \"execute\": \"set-mplm-migration\", 
+                     \"arguments\": 
+                       { \"enable\": true, 
+                         \"firstnondirty\": true, 
+                         \"intervaltime\": 3, 
+                         \"relaxlivemig\": true,  
+                         \"dirtypercents\": 50 } }" | socat UNIX-CONNECT:./qmp-sock-9666 STDIO 
+</pre>
+In the example command above, the MPLM-enable flag is set to "true", the firstnondirty flag is also "true", the length of an 
+epoch is 3 seconds, the relaxing of memory scanning is enabled, and the percentage of transmission of dirty pages is 50 percents. 
 <p>
 <i><a id="Perf"><h4>2.6 MPLM Performance Report</h4></a></i>
 <p> 
