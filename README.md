@@ -313,7 +313,8 @@ MPLM operates under a set of configuration parameters. They are:
   to the destination during live migration, the number of dirty pages within those 100 pages is defined by this variable. 
   The default value is 50. 
 </ul>
-You can change values of these parameters by running the following commands before starting a migration. 
+You can change values of these parameters by running the following commands before starting a migration. (See <a href="https://github.com/kasidit/qemu-mplm/blob/master/migration/MPLM/qmp-set-mplm-migration.sh">qmp-set-mplm-migration.sh</a>)
+<p>
 <pre>
 $ echo "{ \"execute\": \"qmp_capabilities\" } 
       { \"execute\": \"set-mplm-migration\", 
