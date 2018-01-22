@@ -260,6 +260,7 @@ $ echo "{ \"execute\": \"qmp_capabilities\" }
       { \"execute\": \"migrate-incoming\", 
         \"arguments\": { \"uri\": \"tcp::8698\" } }" | socat UNIX-CONNECT:./qmp-sock-9666 STDIO
 </pre>
+<p>
 On the source host, you would invoke the following command to start a migration. (See <a href="https://github.com/kasidit/qemu-mplm/blob/master/migration/MPLM/qmp-migrate.sh">qmp-migrate.sh</a>) 
 <p>
 <b>On the source host:</b> 
@@ -268,6 +269,23 @@ $ echo "{ \"execute\": \"qmp_capabilities\" }
       { \"execute\": \"migrate\", 
         \"arguments\": { \"uri\": \"tcp:192.100.20.3:8698\" } }" | socat UNIX-CONNECT:./qmp-sock-9666 STDIO 
 </pre>
+<p>
+ <b>2.5.3 MPLM Live Migration Extension:</b> <br>
+<p>
+MPLM allows users to extend live migration operation until they instruct otherwise. To enable the continuation of live migration stage 
+beyond normal MPLM live migration, you have to issue the following QMP command before MPLM ending conditions 
+are satisfied. It is safe to issue the command before or when the migration is launched. (See <a href="https://github.com/kasidit/qemu-mplm/blob/master/migration/MPLM/qmp-set-mplm-extend-live.sh">qmp-set-mplm-extend-live.sh</a>)
+<pre>
+$ echo "{ \"execute\": \"qmp_capabilities\" } 
+        { \"execute\": \"set-mplm-extend-live\" }" | nc -U ./qmp-sock-9666 
+</pre>
+<p>
+When you want to stop the extended live migration operation, you have to issue the following command. (See <a href="https://github.com/kasidit/qemu-mplm/blob/master/migration/MPLM/qmp-set-mplm-end-live.sh">qmp-set-mplm-end-live.sh</a>
+<pre>
+$ echo "{ \"execute\": \"qmp_capabilities\" } 
+        { \"execute\": \"set-mplm-end-live\" }" | nc -U ./qmp-sock-9666 
+</pre>
+MPLM will stop live migration stage and enter the last migration stage, the stop and copy operation. 
 <p>
 <i><a id="Perf"><h4>2.6 MPLM Performance Report</h4></a></i>
 <p> 
