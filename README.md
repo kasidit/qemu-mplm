@@ -225,7 +225,8 @@ vm$> ./bin/bt.C.x
 <p>
 <i><a id="migVM"><h4>2.5 Perform an MPLM migration</h4></a></i>
 <p><p>
- <b>2.5.1 Default Migration:</b>
+ <b>2.5.1 Default Migration:</b> <br>
+<p>
 MPLM is defined to be the default migration implementation of our modified QEMU here. To perform a migration, you can invoke the following command.
 <p>
 <b>On the source host:</b><br>
