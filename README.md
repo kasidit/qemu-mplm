@@ -286,7 +286,7 @@ $ echo "{ \"execute\": \"qmp_capabilities\" }
         { \"execute\": \"set-mplm-end-live\" }" | nc -U ./qmp-sock-9666 
 </pre>
 MPLM will stop live migration stage and enter the last migration stage, the stop and copy operation. 
-<p>
+<p><p>
  <b>2.5.4 MPLM Live Migration Configuration:</b> <br>
 <p>
 MPLM operates under a set of configuration parameters. They are: 
