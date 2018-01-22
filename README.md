@@ -191,7 +191,7 @@ $ scp ubuntu1604qcow2.img kasidit@192.100.20.3:/home/kasidit/images
  <b>On the destination host:</b>
 <p><p>
 On the destination machine, we invoke qemu to wait for state transfer from the source. You can also run a vnc client 
-to view the VM's console. This VM wait for a connection from a migraing VM on port 8698. 
+to view the VM's console. This VM wait for a connection from a migraing VM on port 8698. (See <a href="https://github.com/kasidit/qemu-mplm/blob/master/migration/MPLM/runKvmUserNet-incoming.sh">runKvmUserNet-incoming.sh</a>)
 <pre>
 $ sudo /home/kasidit/qemu-mplm-bin/bin/qemu-system-x86_64 -enable-kvm -cpu host -smp 4 -m 16G \
   -drive file=/home/kasidit/images/ubuntu1604qcow2.img,format=qcow2 -boot c -vnc :95 \
@@ -204,7 +204,7 @@ $
 <p>
 <i><a id="srcVM"><h4>2.4 Run a source VM</h4></a></i>
 <p>
-Next, we will run the source VM on the source host. 
+ Next, we will run the source VM on the source host. (See <a href="https://github.com/kasidit/qemu-mplm/blob/master/migration/MPLM/runKvmUserNet.sh">runKvmUserNet.sh</a>)
 <p><p>
  <b>On the source host:</b>
 <pre>
@@ -225,17 +225,48 @@ vm$> ./bin/bt.C.x
 <p>
 <i><a id="migVM"><h4>2.5 Perform an MPLM migration</h4></a></i>
 <p><p>
- <b>On the source host:</b>
-We launch a migration using the following command.
+ <b>2.5.1 Default Migration:</a>
+MPLM is defined to be the default migration implementation of our modified QEMU here. To perform a migration, you can invoke the following command.
+<p>
+<b>On the source host:</b><br>
 <pre>
 $ echo "migrate -d tcp:192.100.20.3:8698" | nc localhost 9666
 </pre>
-We can also check status of the migration below.
+QEMU will report migration performance to stdout. You can also view status and migration performance using a command below.
 <pre>
 $ echo "info migrate" | nc localhost 9666
 </pre>
-Performance statistices during the migration are reported in the migreport.txt. We will explain these results later. 
 <p>
+ <b>2.5.2 Migration using QMP (sending JSON-based instructions):</b> <br>
+<p>
+You can also use QMP to send instruction to QEMU to perform a migraiton. If you wan to start the waiting VM at the destination with deferred-incoming migration mode (that will defer the specification of listening TCP port until the migration is about to occur), you have to run the destination VM with the following commands. (See <a href="https://github.com/kasidit/qemu-mplm/blob/master/migration/MPLM/runKvmUserNet-incoming-defer.sh">runKvmUserNet-incoming-defer.sh</a>)
+<pre>
+$ sudo /home/kasidit/qemu-mplm-bin/bin/qemu-system-x86_64 -enable-kvm -cpu host -smp 4 -m 16G \
+  -drive file=/home/kasidit/images/ubuntu1604qcow2.img,format=qcow2 -boot c -vnc :95 \
+  -monitor tcp::9666,server,nowait \
+  -net nic -net user \
+  -localtime \
+ <b>-incoming defer</b> &
+$
+</pre>
+<p>
+At a migration event, you have to run the incoming migration command on the destination host using the following commands. 
+ (See <a href="https://github.com/kasidit/qemu-mplm/blob/master/migration/MPLM/qmp-migincoming.sh">qmp-migincoming.sh</a>)
+<p>
+<b>On the destination host:</b>
+<pre>
+$ echo "{ \"execute\": \"qmp_capabilities\" } 
+      { \"execute\": \"migrate-incoming\", 
+        \"arguments\": { \"uri\": \"tcp::8698\" } }" | socat UNIX-CONNECT:./qmp-sock-9666 STDIO
+</pre>
+On the source host, you would invoke the following command to start a migration. (See <a href="https://github.com/kasidit/qemu-mplm/blob/master/migration/MPLM/qmp-migrate.sh">qmp-migrate.sh</a>) 
+<p>
+<b>On the source host:</b> 
+<pre>
+$ echo "{ \"execute\": \"qmp_capabilities\" } 
+      { \"execute\": \"migrate\", 
+        \"arguments\": { \"uri\": \"tcp:192.100.20.3:8698\" } }" | socat UNIX-CONNECT:./qmp-sock-9666 STDIO 
+</pre>
 <p>
 <i><a id="Perf"><h4>2.6 MPLM Performance Report</h4></a></i>
 <p> 
