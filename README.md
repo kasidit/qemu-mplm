@@ -286,12 +286,21 @@ $ echo "{ \"execute\": \"qmp_capabilities\" }
         { \"execute\": \"set-mplm-extend-live\" }" | nc -U ./qmp-sock-9666 
 </pre>
 <p>
+You can also use qeu monitor command below to enable the extension. 
+<pre>
+$ echo "set-mplm-extend-live" | nc localhost 9666
+</pre>
+<p><p>
 When you want to stop the extended live migration operation, you have to issue the following command. (See <a href="https://github.com/kasidit/qemu-mplm/blob/master/migration/MPLM/qmp-set-mplm-end-live.sh">qmp-set-mplm-end-live.sh</a>
 <pre>
 $ echo "{ \"execute\": \"qmp_capabilities\" } 
         { \"execute\": \"set-mplm-end-live\" }" | nc -U ./qmp-sock-9666 
 </pre>
 MPLM will stop live migration stage and enter the last migration stage, the stop and copy operation. 
+You can also use qeu monitor command below to stop the extension. 
+<pre>
+$ echo "set-mplm-end-live" | nc localhost 9666
+</pre>
 <p><p>
  <b>2.5.4 MPLM Live Migration Configuration:</b> <br>
 <p>
@@ -334,6 +343,14 @@ $ echo "{ \"execute\": \"qmp_capabilities\" }
 In the example command above, the MPLM-enable flag is set to "true", the firstnondirty flag is also "true", the length of an 
 epoch is 3 seconds, the relaxing of memory scanning is enabled, and the percentage of transmission of dirty pages is 50 percents. 
 <p>
+The qemu monitor command below can also be used to configure mplm migration parameters. 
+The "-n" option instruct aemu to enable MPLM. The "-f" means the "firstnondirty" parameter is true. 
+The "-r" represents the enabling of the "relaxlivemig" flag. The subsequent parameters in the command represents the 
+"intervaltime" and "dirtypercents" values, respectively. 
+<pre>
+$ echo "set-mplm-migration -n -f -r 3 50" | echo nc localhost 9666
+</pre>
+<p><p>
 <i><a id="Perf"><h4>2.6 MPLM Performance Report</h4></a></i>
 <p> 
 During the migration, MPLM reports its operating status to the "migreport.txt" file. An example of the file 
