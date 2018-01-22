@@ -287,6 +287,18 @@ $ echo "{ \"execute\": \"qmp_capabilities\" }
 </pre>
 MPLM will stop live migration stage and enter the last migration stage, the stop and copy operation. 
 <p>
+ <b>2.5.4 MPLM Live Migration Configuration:</b> <br>
+<p>
+MPLM operates under a set of configuration parameters. They are: 
+<ul>
+ <li> <b>MPLM enable flag<b>: you can enable or disable MPLM algorithm. MPLM is eanled by default. By disabling it, 
+  live migration mechanism will adopt the ending conditions of the pre-copy mechanism based on the maximum tolrerable 
+  downtime rather than its own. Note that, although very similar, the migration operation under disabling MPLM mode is 
+  not identical to that of the original pre-copy. 
+ <li> 
+</ul>
+You can change the configuration parameters of MPLM using. 
+<p>
 <i><a id="Perf"><h4>2.6 MPLM Performance Report</h4></a></i>
 <p> 
 During the migration, MPLM reports its operating status to the "migreport.txt" file. An example of the file 
