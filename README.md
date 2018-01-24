@@ -232,7 +232,7 @@ vm$> ./bin/bt.C.x
 <p><p>
  <b>2.5.1 Default Migration:</b> <br>
 <p>
-MPLM is defined to be the default migration implementation of our modified QEMU here. To perform a migration, you can invoke the following command.
+MPLM is defined to be the default migration implementation of our modified QEMU here. In our example, we assume that the IP address of the destination host is 192.168.20.3. To perform a migration, you can invoke the following command.
 <p>
 <b>On the source host:</b><br>
 <pre>
