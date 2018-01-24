@@ -178,7 +178,7 @@ $ echo quit | nc localhost 9666
 <p>
 <i><a id="destVM"><h4>2.3 Run a destination VM to wait for VM state</h4></a></i>
 <p> 
-In this section, we are going to setup another host computer to be a destination computer. First, we follows instructions in section 1 to prepare and compile qemu-mplm software on the destination host. Next, we will copy the image file from the source host to destination host. Supposed that the IP address of the destination host is 192.100.20.3 and the login account there is kasidit, we will use the following commnads to do so. 
+In this section, we are going to setup another host computer to be a destination computer. First, we follows instructions in section 1 to prepare and compile qemu-mplm software on the destination host. Next, we will copy the image file from the source host to destination host. Supposed that the IP address of the destination host is 192.168.20.3 and the login account there is kasidit, we will use the following commnads to do so. 
 <p><p>
  <b>On the destination host:</b>
 <pre>
@@ -188,7 +188,7 @@ $ mkdir /home/kasidit/images
  <b>On the source host:</b>
 <pre>
 $ cd /home/kasidit/images
-$ scp ubuntu1604qcow2.img kasidit@192.100.20.3:/home/kasidit/images
+$ scp ubuntu1604qcow2.img kasidit@192.168.20.3:/home/kasidit/images
 </pre>
 <p><p>
  <b>On the destination host:</b>
@@ -236,7 +236,7 @@ MPLM is defined to be the default migration implementation of our modified QEMU 
 <p>
 <b>On the source host:</b><br>
 <pre>
-$ echo "migrate -d tcp:192.100.20.3:8698" | nc localhost 9666
+$ echo "migrate -d tcp:192.168.20.3:8698" | nc localhost 9666
 </pre>
 QEMU will report migration performance to stdout. You can also view status and migration performance using a command below.
 <pre>
@@ -273,7 +273,7 @@ On the source host, you would invoke the following command to start a migration.
 <pre>
 $ echo "{ \"execute\": \"qmp_capabilities\" } 
       { \"execute\": \"migrate\", 
-        \"arguments\": { \"uri\": \"tcp:192.100.20.3:8698\" } }" | socat UNIX-CONNECT:./qmp-sock-9666 STDIO 
+        \"arguments\": { \"uri\": \"tcp:192.168.20.3:8698\" } }" | socat UNIX-CONNECT:./qmp-sock-9666 STDIO 
 </pre>
 <p>
  <b>2.5.3 MPLM Live Migration Extension:</b> <br>
