@@ -88,6 +88,64 @@ static PostcopyState incoming_postcopy_state;
    migrations at once.  For now we don't need to add
    dynamic creation of migration */
 
+// MPLM TYPE
+#define 	MPLM_KEEP_PRE_COPY	0
+#define 	MPLM_NO_QUEUE		1
+#define 	MPLM_TWO_QUEUES		2
+// MPLM OPTIONS
+#define 	MPLM_OPTIONS_NONE			0
+#define 	MPLM_OPTIONS_FIRST_ROUND_NONDIRTY	1
+// MPLM DEFAULTS
+#define		MPLM_DEFAULT_INV_INTERVAL		3
+#define         MPLM_DEFAULT_TX_CYCLE                   100
+#define		MPLM_DEFAULT_DIRTY_TRANS_PERCENTS	50
+
+// MPLM
+// The flag is set at the first migration.
+int             mplm_qmp_in_use = 0; 
+int             mplm_savevm_in_use = 0; 
+
+uint8_t 	mplm_flag = 1;
+int 		mplm_type = MPLM_TWO_QUEUES;
+int 		mplm_options = MPLM_OPTIONS_FIRST_ROUND_NONDIRTY;
+
+// use in mplm_mplm_migration_bitmap_find_dirty
+#define         DEFAULT_RELAX_DIRT_TX_FLAG            1
+int             mplm_relax_dirty_tx = DEFAULT_RELAX_DIRT_TX_FLAG; 
+
+int		mplm_interval = MPLM_DEFAULT_INV_INTERVAL;	// in sec.
+
+// MPLM
+int             mplm_send_counter = 0;
+int             mplm_send_cycle_size = MPLM_DEFAULT_TX_CYCLE;
+int             mplm_dirty_pages_sent;
+int             mplm_dirty_pages_allot = MPLM_DEFAULT_DIRTY_TRANS_PERCENTS;
+int             mplm_nondirty_pages_sent;
+int             mplm_nondirty_pages_allot = 
+                  (MPLM_DEFAULT_TX_CYCLE - MPLM_DEFAULT_DIRTY_TRANS_PERCENTS);
+
+int64_t 	checked_mplm_nondirty_sent;
+int64_t 	lastchecked_mplm_nondirty_sent;
+int64_t 	checked_mplm_dirty_sent;
+int64_t 	lastchecked_mplm_dirty_sent;
+
+int64_t 	real_mplm_nondirty_sent;
+int64_t 	lastreal_mplm_nondirty_sent;
+int64_t 	real_mplm_dirty_sent;
+int64_t 	lastreal_mplm_dirty_sent;
+
+// MPLM
+extern int 	mplm_bitmap_sync_flag;
+extern int 	mplm_live_migration_stage_finish;
+
+uint64_t	mplm_bitmap_sync_time = 0;
+int 		mplm_debug_i = 0;
+
+// MPLM: this is the default value.
+int mplm_live_checkpointing_flag = 0;
+int mplm_max_migration_rate_limit_flag = 0; 
+int mplm_use_post_checkpoint_script_flag = 0;
+
 /* For outgoing */
 MigrationState *migrate_get_current(void)
 {
@@ -319,6 +377,14 @@ void qemu_start_incoming_migration(const char *uri, Error **errp)
         deferred_incoming_migration(errp);
     } else if (strstart(uri, "tcp:", &p)) {
         tcp_start_incoming_migration(p, errp);
+    } else if (strstart(uri, "cptcp:", &p)) {
+
+        mplm_flag = 1; 
+        mplm_live_checkpointing_flag = 1; 
+
+        tcp_start_incoming_migration(p, errp);
+
+
 #ifdef CONFIG_RDMA
     } else if (strstart(uri, "rdma:", &p)) {
         rdma_start_incoming_migration(p, errp);
@@ -363,6 +429,17 @@ static void process_incoming_migration_bh(void *opaque)
      */
     qemu_announce_self();
 
+// MPLM-MPLCR
+    if(mplm_live_checkpointing_flag){
+        // stop vm execution
+        autostart = false; 
+        printf("MPLCR live checkpoining is ON. Pause the VM\n"); 
+        fflush(stdout); 
+
+        //change migration flag from checkpointing to migration (default)
+        mplm_live_checkpointing_flag = 0; 
+    }
+
     /* If global state section was not received or we are in running
        state, we need to obey autostart. Any other state is set with
        runstate_set. */
@@ -402,6 +479,11 @@ static void process_incoming_migration_co(void *opaque)
     migrate_set_state(&mis->state, MIGRATION_STATUS_NONE,
                       MIGRATION_STATUS_ACTIVE);
     ret = qemu_loadvm_state(f);
+
+// MPLM debug 
+//printf("MPLM incoming stop here\n"); 
+//fflush(stdout); 
+//for(;;); 
 
     ps = postcopy_state_get();
     trace_process_incoming_migration_co_end(ret, ps);
@@ -898,6 +980,10 @@ void qmp_migrate_set_parameters(MigrationParameters *params, Error **errp)
     }
     if (params->has_max_bandwidth) {
         s->parameters.max_bandwidth = params->max_bandwidth;
+
+// MPLM reset max rate flag
+        mplm_max_migration_rate_limit_flag = 0; 
+        
         if (s->to_dst_file) {
             qemu_file_set_rate_limit(s->to_dst_file,
                                 s->parameters.max_bandwidth / XFER_LIMIT_RATIO);
@@ -938,62 +1024,11 @@ void qmp_migrate_start_postcopy(Error **errp)
     atomic_set(&s->start_postcopy, true);
 }
 
-// MPLM TYPE
-#define 	MPLM_KEEP_PRE_COPY	0
-#define 	MPLM_NO_QUEUE		1
-#define 	MPLM_TWO_QUEUES		2
-// MPLM OPTIONS
-#define 	MPLM_OPTIONS_NONE			0
-#define 	MPLM_OPTIONS_FIRST_ROUND_NONDIRTY	1
-// MPLM DEFAULTS
-#define		MPLM_DEFAULT_INV_INTERVAL		3
-#define         MPLM_DEFAULT_TX_CYCLE                   100
-#define		MPLM_DEFAULT_DIRTY_TRANS_PERCENTS	50
-
-// The flag is set at the first migration.
-int             mplm_use_qmp = 0; 
-
-uint8_t 	mplm_flag = 1;
-int 		mplm_type = MPLM_TWO_QUEUES;
-int 		mplm_options = MPLM_OPTIONS_FIRST_ROUND_NONDIRTY;
-
-// use in mplm_mplm_migration_bitmap_find_dirty
-#define         DEFAULT_RELAX_DIRT_TX_FLAG            1
-int             mplm_relax_dirty_tx = DEFAULT_RELAX_DIRT_TX_FLAG; 
-
-int		mplm_interval = MPLM_DEFAULT_INV_INTERVAL;	// in sec.
-
-// MPLM
-int             mplm_send_counter = 0;
-int             mplm_send_cycle_size = MPLM_DEFAULT_TX_CYCLE;
-int             mplm_dirty_pages_sent;
-int             mplm_dirty_pages_allot = MPLM_DEFAULT_DIRTY_TRANS_PERCENTS;
-int             mplm_nondirty_pages_sent;
-int             mplm_nondirty_pages_allot = 
-                  (MPLM_DEFAULT_TX_CYCLE - MPLM_DEFAULT_DIRTY_TRANS_PERCENTS);
-
-int64_t 	checked_mplm_nondirty_sent;
-int64_t 	lastchecked_mplm_nondirty_sent;
-int64_t 	checked_mplm_dirty_sent;
-int64_t 	lastchecked_mplm_dirty_sent;
-
-int64_t 	real_mplm_nondirty_sent;
-int64_t 	lastreal_mplm_nondirty_sent;
-int64_t 	real_mplm_dirty_sent;
-int64_t 	lastreal_mplm_dirty_sent;
-
-// MPLM
-extern int 	mplm_bitmap_sync_flag;
-extern int 	mplm_live_migration_stage_finish;
-
-uint64_t	mplm_bitmap_sync_time = 0;
-int 		mplm_debug_i = 0;
-
 // MPLM
 void qmp_set_mplm_migration(bool enable, bool firstnondirty, int64_t intervaltime, 
        bool relaxlivemig, int64_t dirtypercents, Error **errp)
 {
-    mplm_use_qmp = 1; 
+    mplm_qmp_in_use = 1; 
 
     if (enable) {
 
@@ -1233,9 +1268,19 @@ MigrationState *migrate_init(const MigrationParams *params)
     error_free(s->error);
     s->error = NULL;
 
-    if(mplm_use_qmp == 0){
-      mplm_flag = 1; 
-      mplm_type = MPLM_TWO_QUEUES;
+    // MPLM: We first check if savevm is called. If so, all the mplm flags
+    // must be reset since savevm run on the original pre-copy implementation. 
+    // The savevm calls overide all the mplm qmp setting that were made earlier. 
+    // However, since we want MPLM to be a default migration mode, 
+    // all the mplm flags and variables must be set at the beginning of the 
+    // next live migration event (that is not called by savevm). 
+
+    if(mplm_savevm_in_use){
+
+      printf("MPLM disabled: savevm mechanism is used.\n"); 
+      mplm_flag = 0;
+      mplm_type = 0;
+      mplm_options = 0;
 
       mplm_send_counter = 0;
       mplm_send_cycle_size = MPLM_DEFAULT_TX_CYCLE;
@@ -1243,15 +1288,35 @@ MigrationState *migrate_init(const MigrationParams *params)
       mplm_dirty_pages_allot = MPLM_DEFAULT_DIRTY_TRANS_PERCENTS;
       mplm_nondirty_pages_sent = 0;
       mplm_nondirty_pages_allot = MPLM_DEFAULT_TX_CYCLE - mplm_dirty_pages_allot;
-
       mplm_interval = MPLM_DEFAULT_INV_INTERVAL; 
-      mplm_options = MPLM_OPTIONS_FIRST_ROUND_NONDIRTY; 
-
       mplm_relax_dirty_tx = DEFAULT_RELAX_DIRT_TX_FLAG;
+
+      mplm_qmp_in_use = 0; 
+
+    } else {
+
+      if(mplm_qmp_in_use == 0){
+        mplm_flag = 1; 
+        mplm_type = MPLM_TWO_QUEUES;
+
+        mplm_send_counter = 0;
+        mplm_send_cycle_size = MPLM_DEFAULT_TX_CYCLE;
+        mplm_dirty_pages_sent = 0;
+        mplm_dirty_pages_allot = MPLM_DEFAULT_DIRTY_TRANS_PERCENTS;
+        mplm_nondirty_pages_sent = 0;
+        mplm_nondirty_pages_allot = MPLM_DEFAULT_TX_CYCLE - mplm_dirty_pages_allot;
+
+        mplm_interval = MPLM_DEFAULT_INV_INTERVAL; 
+        mplm_options = MPLM_OPTIONS_FIRST_ROUND_NONDIRTY; 
+
+        mplm_relax_dirty_tx = DEFAULT_RELAX_DIRT_TX_FLAG;
+      } else {
+        mplm_qmp_in_use = 0; 
+      // other variables above have already been defined by qmp_mplm_set_...(). 
+      }
+ 
     }
-    else{
-      mplm_use_qmp = 0; 
-    }
+
 
 // MPLM: reinitialize variables.
     mplm_send_counter = 0;
@@ -1272,7 +1337,7 @@ MigrationState *migrate_init(const MigrationParams *params)
     mplm_bitmap_sync_flag = 0;
     mplm_bitmap_sync_time = 0;
 
-    if(local_debug_flag){
+    if((local_debug_flag)&&(mplm_flag)){
 	printf("Start MPLM migration\n\nMPLM: flag = %d, mplm_interval = %d\n", mplm_flag, mplm_interval);
 
         if (mplm_options == MPLM_OPTIONS_FIRST_ROUND_NONDIRTY){ 
@@ -1290,6 +1355,9 @@ MigrationState *migrate_init(const MigrationParams *params)
     QSIMPLEQ_INIT(&s->src_page_requests);
 
     s->total_time = qemu_clock_get_ms(QEMU_CLOCK_REALTIME);
+
+printf("out migrate_init\n"); 
+fflush(stdout);
     return s;
 }
 
@@ -1360,6 +1428,41 @@ void qmp_migrate_incoming(const char *uri, Error **errp)
     }
 
     once = false;
+}
+
+// MPLM
+#define MPLM_SCRIPT_NAME_LEN 200
+
+char mplm_post_checkpoint_cmd[MPLM_SCRIPT_NAME_LEN];
+
+void qmp_mplcr_post_checkpointing_script(const char *uri, Error **errp)
+{
+    Error *local_err = NULL;
+
+    if (!((mplm_flag)&&(mplm_live_checkpointing_flag))) {
+        error_setg(errp, "Error! script only allowed with MPLCR enabled");
+        return;
+    }
+
+    // MPLM
+    printf("qmp_post_checkpointing: defining post checkpointing script (usually used for creating btrfs snapshots).\n"); 
+    fflush(stdout); 
+
+    if(uri){
+      mplm_use_post_checkpoint_script_flag = 1; 
+      pstrcpy(mplm_post_checkpoint_cmd, MPLM_SCRIPT_NAME_LEN, uri);
+
+      printf("qmp_post_checkpointing: script = %s\n", mplm_post_checkpoint_cmd); 
+      fflush(stdout); 
+
+    } else {
+      error_setg(errp, "Error! no abs pathanem of script specified");
+    }
+
+    if (local_err) {
+        error_propagate(errp, local_err);
+        return;
+    }
 }
 
 bool migration_is_blocked(Error **errp)
@@ -1972,6 +2075,11 @@ fail:
  * @*old_vm_running: Pointer to old_vm_running flag
  * @*start_time: Pointer to time to update
  */
+
+// MPLCR
+extern int mplcr_snapshot_flag;
+extern void  mplcr_snapshot_blkdev_processing(void); 
+
 static void migration_completion(MigrationState *s, int current_active_state,
                                  bool *old_vm_running,
                                  int64_t *start_time)
@@ -1992,12 +2100,46 @@ static void migration_completion(MigrationState *s, int current_active_state,
              * we will go into COLO stage later.
              */
             if (ret >= 0 && !migrate_colo_enabled()) {
-                ret = bdrv_inactivate_all();
+// MPLM debug hack 
+                if((mplm_flag)&&(mplm_live_checkpointing_flag)){
+                  printf("MPLM HACK: skip inactivate bdrv\n"); 
+                  fflush(stdout);
+                }
+                else{
+
+                  ret = bdrv_inactivate_all();
+
+                }
             }
             if (ret >= 0) {
                 qemu_file_set_rate_limit(s->to_dst_file, INT64_MAX);
                 qemu_savevm_state_complete_precopy(s->to_dst_file, false);
-                s->block_inactive = true;
+
+// MPLM debug hack 
+                if((mplm_flag)&&(mplm_live_checkpointing_flag)){
+                  printf("MPLM HACK: skip marking block inactive\n"); 
+                  fflush(stdout);
+
+                  if(mplm_use_post_checkpoint_script_flag){
+                    int ret; 
+                    printf("post checkpoint run: %s\n", mplm_post_checkpoint_cmd); 
+                    ret = system(mplm_post_checkpoint_cmd); 
+                    printf("system return %d\n", ret); 
+                  } else {
+                    if(mplcr_snapshot_flag){
+                      mplcr_snapshot_blkdev_processing();  
+                    } else {
+                      printf("mplcr: no qmp_transaction parameter defined. run VM with no new root image.\n");
+                      fflush(stdout);
+                    }
+                  }
+                }
+                else{
+
+                  s->block_inactive = true;
+
+                }
+
             }
         }
         qemu_mutex_unlock_iothread();
@@ -2112,6 +2254,30 @@ void qmp_set_mplm_end_live(Error **errp)
 {
     qmp_mplm_extend_live_migration = 0;
     printf("End live migration extension capability! set extension var to 0.\n");
+}
+
+void qmp_live_checkpointing_enable(Error **errp)
+{
+    mplm_live_checkpointing_flag = 1;
+    printf("Enable live checkpointing. After finishes, it will be disable.\n");
+}
+
+void qmp_live_checkpointing_disable(Error **errp)
+{
+    mplm_live_checkpointing_flag = 0;
+    printf("Disable live checkpointing.\n");
+}
+
+void qmp_enable_max_migration_rate_limit(Error **errp)
+{
+    mplm_max_migration_rate_limit_flag = 1; 
+    printf("Enable max migration rate limit = %"PRId64".\n", INT64_MAX);
+}
+
+void qmp_disable_max_migration_rate_limit(Error **errp)
+{
+    mplm_max_migration_rate_limit_flag = 0; 
+    printf("Disable max migration rate limit (to default value or whatever user previously define).\n");
 }
 
 static void *migration_thread(void *opaque)
@@ -2381,7 +2547,28 @@ static void *migration_thread(void *opaque)
             s->mbps = (((double) transferred_bytes * 8.0) /
                        ((double) s->total_time)) / 1000;
         }
-        runstate_set(RUN_STATE_POSTMIGRATE);
+
+// MPLCR live checkpointing stuffs
+
+        if(mplm_flag && mplm_live_checkpointing_flag && !entered_postcopy){
+            mplm_live_checkpointing_flag = 0; 
+            old_vm_running = true;
+        }
+        // run VM after checkpointing
+        if (old_vm_running && !entered_postcopy) {
+            // MPLM debug
+            printf("MPLCR: Resume VM computation on the source host\n"); 
+            fflush(stdout); 
+
+            vm_start();
+        } else {
+            // MPLM debug
+            printf("MPLM: VM paused on the source host\n"); 
+            fflush(stdout); 
+
+            runstate_set(RUN_STATE_POSTMIGRATE);
+        }
+
     } else {
         if (s->state == MIGRATION_STATUS_ACTIVE && enable_colo) {
             migrate_start_colo_process(s);
@@ -2413,8 +2600,19 @@ void migrate_fd_connect(MigrationState *s)
     s->cleanup_bh = qemu_bh_new(migrate_fd_cleanup, s);
 
     qemu_file_set_blocking(s->to_dst_file, true);
-    qemu_file_set_rate_limit(s->to_dst_file,
+   
+// MPLM
+    if(mplm_max_migration_rate_limit_flag){ 
+        // Debug
+        printf("MPLM Debug: max rate limit is set\n"); 
+        fflush(stdout); 
+
+        qemu_file_set_rate_limit(s->to_dst_file, INT64_MAX);
+
+    } else {
+        qemu_file_set_rate_limit(s->to_dst_file,
                              s->parameters.max_bandwidth / XFER_LIMIT_RATIO);
+    }
 
     /* Notify before starting migration thread */
     notifier_list_notify(&migration_state_notifiers, s);

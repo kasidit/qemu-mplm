@@ -1,0 +1,59 @@
+MPLM modification has been made in the following files. 
+
+qemu-mplm directory: 
+- hmp.c
+
+qemu-mplm/migration directory: 
+- migration.c 
+- ram.c
+
+qemu-mplm/include/exec directory: 
+- ram-addr.h
+
+Jan 25, 2018: 
+To create a blockdev snapshot as a new overlay file, we have to 
+retrieve the device name first. IN doing so, we use "info..." 
+command in qemu monitor. 
+
+Jan 25, 2018: 
+Again, the images got messed up. So, recopy everything from saburo and 
+make two sets. One for MPLCR, another for the original qemu.
+
+Jan 28, 2018: 
+We have a break through on disk snapshoting using btrfs. After performing 
+MPLCR, we create a new overlay on the destination. The VM state can be saved
+there. The overlay would share the same disk images with the source VM. 
+
+On the source, we use the following commands to create snapshot files of 
+the images at the end of stage 3 of the live checkpointing. 
+
+kasidit@numba:~/images$ ls -l
+total 3873876
+-rw-r--r-- 1 kasidit kasidit  882507776 Jan 28 00:57 ub1604-mplcr-layer2-qcow2.ovl
+-rw-r--r-- 1 kasidit kasidit 2844524544 Jan 27 23:21 ub1604-mplcr-qcow2.img
+-rw-r--r-- 1 kasidit kasidit  239861760 Jan 28 00:58 ub1604-mplcr-qcow2.ovl
+-rw-r--r-- 1 kasidit kasidit     197120 Jan 27 23:21 ub1604-mplcr-qcow2.ovl.orig
+kasidit@numba:~/images$ cp --reflink ub1604-mplcr-qcow2.img ub1604-mplcr-qcow2.img.layer2
+kasidit@numba:~/images$ cp --reflink ub1604-mplcr-qcow2.ovl ub1604-mplcr-qcow2.ovl.layer2
+kasidit@numba:~/images$
+kasidit@numba:~/images$
+kasidit@numba:~/images$ ls -l
+total 6885912
+-rw-r--r-- 1 kasidit kasidit  882507776 Jan 28 00:57 ub1604-mplcr-layer2-qcow2.ovl
+-rw-r--r-- 1 kasidit kasidit 2844524544 Jan 27 23:21 ub1604-mplcr-qcow2.img
+-rw-r--r-- 1 kasidit kasidit 2844524544 Jan 28 01:02 ub1604-mplcr-qcow2.img.layer2
+-rw-r--r-- 1 kasidit kasidit  239861760 Jan 28 01:02 ub1604-mplcr-qcow2.ovl
+-rw-r--r-- 1 kasidit kasidit  239861760 Jan 28 01:03 ub1604-mplcr-qcow2.ovl.layer2
+-rw-r--r-- 1 kasidit kasidit     197120 Jan 27 23:21 ub1604-mplcr-qcow2.ovl.orig
+kasidit@numba:~/images$
+
+We will think about how to add the cp operation into the code so that MPLCR 
+would do this automatically. Perhaps, we have to find a way which allow users
+to specify which files to cp --reflink at the end of the checkpointing operation.
+
+All the snapshot files must correctly align with the newly saved VM state. 
+Under this scheme, it should be. 
+
+We also have to think about the case where the host file syatem is not btrfs. 
+In those case, we have to create new root image using blockdev_snapshot command. 
+

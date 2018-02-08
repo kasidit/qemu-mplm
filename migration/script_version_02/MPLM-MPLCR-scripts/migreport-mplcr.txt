@@ -1,0 +1,61 @@
+Formatting '/home/kasidit/images/mplcr_snap_01.ovl', fmt=qcow2 size=8589934592 backing_file=/home/kasidit/images/ub1604-mplcr-qcow2.ovl backing_fmt=qcow2 encryption=off cluster_size=65536 lazy_refcounts=off refcount_bits=16
+mplcr: device name is ide0-hd0
+mplcr: filename is /home/kasidit/images/mplcr_snap_x1.ovl
+mplcr: format is qcow2
+Enable live checkpointing. After finishes, it will be disable.
+Enable max migration rate limit = 9223372036854775807.
+qmp_migrate: Start performing migration!
+Start MPLM migration
+
+MPLM: flag = 1, mplm_interval = 3
+Performing MPLM with firstnondirty flag and interval 3 and relax = 1
+ with 50 percents of dirty pages per cycle
+
+out migrate_init
+MPLM Debug: max rate limit is set
+<> migration_bitmap_sync: TotalPages 1053362 DirtPagesPeriod 1052882 DirtPagesCnt 1052882 TrackedNondirtPages 1052882 ExplicitlyCountedNondirtPages 1052914
+ RSI: mplm_wakeup_time sec 1517991936 usec 721550
+RSI: mplm_wakeup_time + 3 sec 1517991939 usec 721550
+<> migration_bitmap_sync: TotalPages 1053362 DirtPagesPeriod 1053515 DirtPagesCnt 37016 TrackedNondirtPages 36383 ExplicitlyCountedNondirtPages 36415
+  pending_size = 151617536 pending_pages = 37016.000000
+ LastAccumulated TxNondirtyFSMlookfor= 1016340 (1016340 increase) DirtyFSMlookfor=0 (0 added) NondirtyFSMlookfor Percents is 1.000000 
+ LastAccumulated TxNondirtyFSMreal= 1016340 (1016340 increase) TxDirtyFSMreal=0 NondirtyFSMreal (0 increase) Percents is 1.000000, NotSendDirt 0 NotSendNonDirt 0
+
+MPLM HACK: skip inactivate bdrv
+<> migration_bitmap_sync: TotalPages 1053362 DirtPagesPeriod 0 DirtPagesCnt 37016 TrackedNondirtPages 36383 ExplicitlyCountedNondirtPages 36415
+ MPLM HACK: skip marking block inactive
+mplcr: device name is ide0-hd0
+mplcr: filename is /home/kasidit/images/mplcr_snap_x1.ovl
+mplcr: format is qcow2
+Formatting '/home/kasidit/images/mplcr_snap_x1.ovl', fmt=qcow2 size=8589934592 backing_file=/home/kasidit/images/mplcr_snap_01.ovl backing_fmt=qcow2 encryption=off cluster_size=65536 lazy_refcounts=off refcount_bits=16
+MPLCR: Resume VM computation on the source host
+mplcr: device name is ide0-hd0
+mplcr: filename is /home/kasidit/images/mplcr_snap_x2.ovl
+mplcr: format is qcow2
+Enable live checkpointing. After finishes, it will be disable.
+Enable max migration rate limit = 9223372036854775807.
+qmp_migrate: Start performing migration!
+Start MPLM migration
+
+MPLM: flag = 1, mplm_interval = 3
+Performing MPLM with firstnondirty flag and interval 3 and relax = 1
+ with 50 percents of dirty pages per cycle
+
+out migrate_init
+MPLM Debug: max rate limit is set
+<> migration_bitmap_sync: TotalPages 1053362 DirtPagesPeriod 0 DirtPagesCnt 1052882 TrackedNondirtPages 1052882 ExplicitlyCountedNondirtPages 1052914
+ RSI: mplm_wakeup_time sec 1517992373 usec 384744
+RSI: mplm_wakeup_time + 3 sec 1517992376 usec 384744
+<> migration_bitmap_sync: TotalPages 1053362 DirtPagesPeriod 596 DirtPagesCnt 45411 TrackedNondirtPages 44815 ExplicitlyCountedNondirtPages 44847
+  pending_size = 186003456 pending_pages = 45411.000000
+ LastAccumulated TxNondirtyFSMlookfor= 1007890 (1007890 increase) DirtyFSMlookfor=0 (0 added) NondirtyFSMlookfor Percents is 1.000000 
+ LastAccumulated TxNondirtyFSMreal= 1007890 (1007890 increase) TxDirtyFSMreal=0 NondirtyFSMreal (0 increase) Percents is 1.000000, NotSendDirt 1011767 NotSendNonDirt 0
+
+MPLM HACK: skip inactivate bdrv
+<> migration_bitmap_sync: TotalPages 1053362 DirtPagesPeriod 596 DirtPagesCnt 45411 TrackedNondirtPages 44815 ExplicitlyCountedNondirtPages 44847
+ MPLM HACK: skip marking block inactive
+mplcr: device name is ide0-hd0
+mplcr: filename is /home/kasidit/images/mplcr_snap_x2.ovl
+mplcr: format is qcow2
+Formatting '/home/kasidit/images/mplcr_snap_x2.ovl', fmt=qcow2 size=8589934592 backing_file=/home/kasidit/images/mplcr_snap_x1.ovl backing_fmt=qcow2 encryption=off cluster_size=65536 lazy_refcounts=off refcount_bits=16
+MPLCR: Resume VM computation on the source host

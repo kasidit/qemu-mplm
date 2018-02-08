@@ -6372,3 +6372,88 @@
 # Since 2.9
 ##
 { 'command': 'set-mplm-end-live' }
+
+##
+# @live-checkpointing-enable:
+#
+# This command enables live checkpointing operation.
+#
+# Returns: nothing.
+#
+# Example:
+#
+# -> { "execute": "live-checkpointing-enable" }
+# <- { "return": {} }
+#
+# Since 2.9
+##
+{ 'command': 'live-checkpointing-enable' }
+
+##
+# @live-checkpointing-disable:
+#
+# This command disables live checkpointing.
+#
+# Returns: nothing.
+#
+# Example:
+#
+# -> { "execute": "live-checkpointing-disable" }
+# <- { "return": {} }
+#
+# Since 2.9
+##
+{ 'command': 'live-checkpointing-disable' }
+
+##
+# @enable-max-migration-rate-limit:
+#
+# This command enable maximum transfer rate limit to INT64_MAX.
+#
+# Returns: nothing.
+#
+# Example:
+#
+# -> { "execute": "enable-max-migration-rate-limit" }
+# <- { "return": {} }
+#
+# Since 2.9
+##
+{ 'command': 'enable-max-migration-rate-limit' }
+
+##
+# @disable-max-migration-rate-limit:
+#
+# This command enable maximum transfer rate limit to INT64_MAX.
+#
+# Returns: nothing.
+#
+# Example:
+#
+# -> { "execute": "disable-max-migration-rate-limit" }
+# <- { "return": {} }
+#
+# Since 2.9
+##
+{ 'command': 'disable-max-migration-rate-limit' }
+
+##
+# @mplcr-post-checkpointing-script:
+#
+# Run a shell script after mplcr live checkpointing finish and before VM 
+# resume computation.
+#
+# @uri: absolute path of the shell script.
+#
+# Returns: nothing on success
+#
+# Since: 2.9
+#
+# Example:
+#
+# -> { "execute": "mplcr-post-checkpointing-script",
+#      "arguments": { "uri": "/home/kasidit/images/createBtrfsFileSnashot.sh" } }
+# <- { "return": {} }
+#
+##
+{ 'command': 'mplcr-post-checkpointing-script', 'data': {'uri': 'str' } }

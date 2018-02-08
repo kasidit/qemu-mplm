@@ -1,0 +1,20 @@
+MPLM modification has been made in the following files. 
+
+qemu-mplm directory: 
+- hmp.c
+
+qemu-mplm/migration directory: 
+- migration.c 
+- ram.c
+
+qemu-mplm/include/exec directory: 
+- ram-addr.h
+
+Jan 25, 2018: 
+To create a blockdev snapshot as a new overlay file, we have to 
+retrieve the device name first. IN doing so, we use "info..." 
+command in qemu monitor. 
+
+Jan 25, 2018: 
+Again, the images got messed up. So, recopy everything from saburo and 
+make two sets. One for MPLCR, another for the original qemu.

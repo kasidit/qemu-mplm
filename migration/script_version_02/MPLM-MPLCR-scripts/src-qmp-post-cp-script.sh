@@ -1,0 +1,1 @@
+echo "{ \"execute\": \"qmp_capabilities\" } { \"execute\": \"mplcr-post-checkpointing-script\", \"arguments\": { \"uri\": \"/home/kasidit/software/MPLM-MPLCR-scripts/createBtrfsFileSnashot.sh\" } }" | sudo socat UNIX-CONNECT:./qmp-sock-9666 STDIO 

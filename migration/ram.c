@@ -773,7 +773,7 @@ static inline bool migration_bitmap_clear_dirty(ram_addr_t addr)
 
 static int64_t num_dirty_pages_period;
 
-/*
+
 // This is the original pre-copy. 
 //
 static void migration_bitmap_sync_range(ram_addr_t start, ram_addr_t length)
@@ -783,7 +783,6 @@ static void migration_bitmap_sync_range(ram_addr_t start, ram_addr_t length)
     migration_dirty_pages += cpu_physical_memory_sync_dirty_bitmap(bitmap,
                              start, length, &num_dirty_pages_period);
 }
-*/
 
 static void mplm_migration_bitmap_sync_range(int first_sync, ram_addr_t start, ram_addr_t length)
 {
@@ -841,21 +840,23 @@ static void migration_bitmap_sync_init(void)
     xbzrle_cache_miss_prev = 0;
     iterations_prev = 0;
 // MPLM
-    mplm_num_real_dirty_pages = 0;
-    mplm_num_new_dirty_pages = 0;
-    mplm_num_bmap_dirty_pages = 0;
-    mplm_num_dirty_pages = 0;
-    current_num_nondirty_pages = 0;
-    mplm_num_all_pages = 0;
+    if(mplm_flag){
+      mplm_num_real_dirty_pages = 0;
+      mplm_num_new_dirty_pages = 0;
+      mplm_num_bmap_dirty_pages = 0;
+      mplm_num_dirty_pages = 0;
+      current_num_nondirty_pages = 0;
+      mplm_num_all_pages = 0;
 
-    if(mplm_options == MPLM_OPTIONS_FIRST_ROUND_NONDIRTY){
+      if(mplm_options == MPLM_OPTIONS_FIRST_ROUND_NONDIRTY){
         rsb_state = S0_NonDirty; 
-    }
-    else{
+      }
+      else{
         rsb_state = S1_NonDirty; 
-    }
+      }
 
-    mplm_live_migration_stage_finish = 0; 
+      mplm_live_migration_stage_finish = 0; 
+    }
 }
 
 /* Returns a summary bitmap of the page sizes of all RAMBlocks;
@@ -891,50 +892,62 @@ static void migration_bitmap_sync(int first_sync)
     }
 
 // MPLM
-    mplm_num_real_dirty_pages = 0;
-    mplm_num_new_dirty_pages = 0;
-    mplm_num_bmap_dirty_pages = 0;
-    mplm_num_dirty_pages = 0;
-    current_num_nondirty_pages = 0;
+    if(mplm_flag){
+      mplm_num_real_dirty_pages = 0;
+      mplm_num_new_dirty_pages = 0;
+      mplm_num_bmap_dirty_pages = 0;
+      mplm_num_dirty_pages = 0;
+      current_num_nondirty_pages = 0;
 
-    if(!first_sync){ // do S0_NonDirty first during DU interval only
+      if(!first_sync){ // do S0_NonDirty first during DU interval only
         if (rsb_state == S0_NonDirty) rsb_state = S1_NonDirty;  
-    }
+      }
 
+      mplm_num_all_pages = 0;
+    }
 // MPLM
     //printf("bitmap_sync_count %" PRId64 " rsb state %d \n", bitmap_sync_count, rsb_state);
     //fflush(stdout);
 
     bitmap_sync_count++;
 
-    mplm_num_all_pages = 0;
-
     trace_migration_bitmap_sync_start();
     memory_global_dirty_log_sync();
 
-    qemu_mutex_lock(&migration_bitmap_mutex);
-
-    rcu_read_lock();
-    QLIST_FOREACH_RCU(block, &ram_list.blocks, next) {
+    if(mplm_flag){
+      qemu_mutex_lock(&migration_bitmap_mutex);
+      rcu_read_lock();
+      QLIST_FOREACH_RCU(block, &ram_list.blocks, next) {
         mplm_migration_bitmap_sync_range(first_sync, block->offset, block->used_length); // MPLM
+      }
+      rcu_read_unlock();
+      qemu_mutex_unlock(&migration_bitmap_mutex);
+    } else {
+      qemu_mutex_lock(&migration_bitmap_mutex);
+      rcu_read_lock();
+      QLIST_FOREACH_RCU(block, &ram_list.blocks, next) {
+        migration_bitmap_sync_range(block->offset, block->used_length);
+      }
+      rcu_read_unlock();
+      qemu_mutex_unlock(&migration_bitmap_mutex);
     }
-    rcu_read_unlock();
-    qemu_mutex_unlock(&migration_bitmap_mutex);
 
+    if(mplm_flag){
 // MPLM
-    printf("<> migration_bitmap_sync: \
+      printf("<> migration_bitmap_sync: \
 TotalPages %" PRId64 " \
 DirtPagesPeriod %" PRId64 " \
 DirtPagesCnt %" PRId64 " \
 TrackedNondirtPages %" PRId64 " \
 ExplicitlyCountedNondirtPages %" PRId64 "\n ", 
-    mplm_total_ram_pages,
-    num_dirty_pages_period,
-    migration_dirty_pages,
-    mplm_num_nondirty_pages,
-    current_num_nondirty_pages
-    ); 
-    fflush(stdout);
+      mplm_total_ram_pages,
+      num_dirty_pages_period,
+      migration_dirty_pages,
+      mplm_num_nondirty_pages,
+      current_num_nondirty_pages
+      ); 
+      fflush(stdout);
+    }
 
     trace_migration_bitmap_sync_end(num_dirty_pages_period);
 
@@ -1753,6 +1766,59 @@ static int ram_save_target_nondirty_page(MigrationState *ms, QEMUFile *f,
 }
 
 /**
+ * ram_save_target_page: Save one target page
+ *
+ *
+ * @f: QEMUFile where to send the data
+ * @block: pointer to block that contains the page we want to send
+ * @offset: offset inside the block for the page;
+ * @last_stage: if we are at the completion stage
+ * @bytes_transferred: increase it with the number of transferred bytes
+ * @dirty_ram_abs: Address of the start of the dirty page in ram_addr_t space
+ *
+ * Returns: Number of pages written.
+ */
+
+static int ram_save_target_page(MigrationState *ms, QEMUFile *f,
+                                PageSearchStatus *pss,
+                                bool last_stage,
+                                uint64_t *bytes_transferred,
+                                ram_addr_t dirty_ram_abs)
+{
+    int res = 0;
+
+    /* Check the pages is dirty and if it is send it */
+    if (migration_bitmap_clear_dirty(dirty_ram_abs)) {
+        unsigned long *unsentmap;
+        if (compression_switch && migrate_use_compression()) {
+            res = ram_save_compressed_page(ms, f, pss,
+                                           last_stage,
+                                           bytes_transferred);
+        } else {
+            res = ram_save_page(ms, f, pss, last_stage,
+                                bytes_transferred);
+        }
+
+        if (res < 0) {
+            return res;
+        }
+        unsentmap = atomic_rcu_read(&migration_bitmap_rcu)->unsentmap;
+        if (unsentmap) {
+            clear_bit(dirty_ram_abs >> TARGET_PAGE_BITS, unsentmap);
+        }
+        /* Only update last_sent_block if a block was actually sent; xbzrle
+         * might have decided the page was identical so didn't bother writing
+         * to the stream.
+         */
+        if (res > 0) {
+            last_sent_block = pss->block;
+        }
+    }
+
+    return res;
+}
+
+/**
  * ram_save_host_dirty_page: Starting at *offset send pages up to the end
  *                     of the current host page.  It's valid for the initial
  *                     offset to point into the middle of a host page
@@ -1843,6 +1909,52 @@ static int ram_save_host_nondirty_page(MigrationState *ms, QEMUFile *f,
 }
 
 /**
+ * ram_save_host_page: Starting at *offset send pages up to the end
+ *                     of the current host page.  It's valid for the initial
+ *                     offset to point into the middle of a host page
+ *                     in which case the remainder of the hostpage is sent.
+ *                     Only dirty target pages are sent.
+ *                     Note that the host page size may be a huge page for this
+ *                     block.
+ *
+ * Returns: Number of pages written.
+ *
+ * @f: QEMUFile where to send the data
+ * @block: pointer to block that contains the page we want to send
+ * @offset: offset inside the block for the page; updated to last target page
+ *          sent
+ * @last_stage: if we are at the completion stage
+ * @bytes_transferred: increase it with the number of transferred bytes
+ * @dirty_ram_abs: Address of the start of the dirty page in ram_addr_t space
+ */
+
+static int ram_save_host_page(MigrationState *ms, QEMUFile *f,
+                              PageSearchStatus *pss,
+                              bool last_stage,
+                              uint64_t *bytes_transferred,
+                              ram_addr_t dirty_ram_abs)
+{
+    int tmppages, pages = 0;
+    size_t pagesize = qemu_ram_pagesize(pss->block);
+
+    do {
+        tmppages = ram_save_target_page(ms, f, pss, last_stage,
+                                        bytes_transferred, dirty_ram_abs);
+        if (tmppages < 0) {
+            return tmppages;
+        }
+
+        pages += tmppages;
+        pss->offset += TARGET_PAGE_SIZE;
+        dirty_ram_abs += TARGET_PAGE_SIZE;
+    } while (pss->offset & (pagesize - 1));
+
+    /* The offset we leave with is the last one we looked at */
+    pss->offset -= TARGET_PAGE_SIZE;
+    return pages;
+}
+
+/**
  * ram_find_and_save_block: Finds a dirty page and sends it to f
  *
  * Called within an RCU critical section.
@@ -1873,12 +1985,15 @@ static int ram_find_and_save_block(QEMUFile *f, bool last_stage,
 
     /* No dirty page as there is zero RAM */
     if (!ram_bytes_total()) {
-        mplm_live_migration_stage_finish = 1; 
+        if(mplm_flag){
+          mplm_live_migration_stage_finish = 1; 
+        }
         return pages;
     }
 
-    if((mplm_flag) &&
-       (mplm_type == MPLM_TWO_QUEUES) &&
+    if(mplm_flag){
+
+    if((mplm_type == MPLM_TWO_QUEUES) &&
        (last_stage == false) &&
        (rsb_state != S4_LiveMigEnd) 
       ){ // if during  MPLM  Live Stage under the TWOQ option, perform below. 
@@ -2091,6 +2206,36 @@ static int ram_find_and_save_block(QEMUFile *f, bool last_stage,
       last_seen_block = pss.block;
       last_offset = pss.offset;
 
+    }
+
+    }
+    else{
+      pss.block = last_seen_block;
+      pss.offset = last_offset;
+      pss.complete_round = false;
+
+      if (!pss.block) {
+        pss.block = QLIST_FIRST_RCU(&ram_list.blocks);
+      }
+
+      do {
+        again = true;
+        found = get_queued_page(ms, &pss, &dirty_ram_abs);
+
+        if (!found) {
+            /* priority queue empty, so just search for something dirty */
+            found = find_dirty_block(f, &pss, &again, &dirty_ram_abs);
+        }
+
+        if (found) {
+            pages = ram_save_host_page(ms, f, &pss,
+                                       last_stage, bytes_transferred,
+                                       dirty_ram_abs);
+        }
+      } while (!pages && again);
+
+      last_seen_block = pss.block;
+      last_offset = pss.offset;
     }
 
     return pages;
@@ -2662,15 +2807,17 @@ static int ram_save_init_globals(void)
     if (ram_bytes_total()) {
         ram_bitmap_pages = last_ram_offset() >> TARGET_PAGE_BITS;
 // MPLM
-        mplm_total_ram_pages = ram_bitmap_pages; 
+        if(mplm_flag){
+            mplm_total_ram_pages = ram_bitmap_pages; 
+        }
+
         migration_bitmap_rcu->bmap = bitmap_new(ram_bitmap_pages);
         bitmap_set(migration_bitmap_rcu->bmap, 0, ram_bitmap_pages);
 // MPLM
         if(mplm_flag){
-        	migration_bitmap_rcu->nondirtybmap = bitmap_new(ram_bitmap_pages);
-        	bitmap_set(migration_bitmap_rcu->nondirtybmap, 0, ram_bitmap_pages);
-
-        	mplm_bitmap_sync_flag = 0;
+            migration_bitmap_rcu->nondirtybmap = bitmap_new(ram_bitmap_pages);
+            bitmap_set(migration_bitmap_rcu->nondirtybmap, 0, ram_bitmap_pages);
+            mplm_bitmap_sync_flag = 0;
         }
 
         if (migrate_postcopy_ram()) {
@@ -2684,7 +2831,10 @@ static int ram_save_init_globals(void)
      * gaps due to alignment or unplugs.
      */
     migration_dirty_pages = ram_bytes_total() >> TARGET_PAGE_BITS;
-    mplm_num_nondirty_pages = migration_dirty_pages; 
+
+    if(mplm_flag){
+        mplm_num_nondirty_pages = migration_dirty_pages; 
+    }
 
     memory_global_dirty_log_start();
     migration_bitmap_sync(1); // first sync pass 1 as a param
@@ -2767,7 +2917,9 @@ static int ram_save_iterate(QEMUFile *f, void *opaque)
 
     t0 = qemu_clock_get_ns(QEMU_CLOCK_REALTIME);
 // MPLM
-    if(local_debug_flag){
+    if(mplm_flag){
+
+      if(local_debug_flag){
     	if(last_t0 == 0){
     		calling_gap = 0;
     	}
@@ -2775,10 +2927,10 @@ static int ram_save_iterate(QEMUFile *f, void *opaque)
     		calling_gap = (t0 - last_t0) / 1000000;
     	}
     	last_t0 = t0;
-    }
-    num_enter_ram_save_iterate++;
+      }
+      num_enter_ram_save_iterate++;
 
-    if(mplm_flag){
+      if(mplm_flag){
     	if(mplm_wakeup_time.tv_sec == 0){ // first time only
     		// set mplm wake up time
     		gettimeofday(&mplm_wakeup_time, NULL);
@@ -2789,10 +2941,10 @@ static int ram_save_iterate(QEMUFile *f, void *opaque)
     				mplm_wakeup_time.tv_sec, mplm_wakeup_time.tv_usec);
     		fflush(stdout);
     	}
-    }
+      }
 
-    i = 0;
-    while ((ret = qemu_file_rate_limit(f)) == 0) {
+      i = 0;
+      while ((ret = qemu_file_rate_limit(f)) == 0) {
         int pages;
 
         pages = ram_find_and_save_block(f, false, &bytes_transferred);
@@ -2855,20 +3007,20 @@ static int ram_save_iterate(QEMUFile *f, void *opaque)
         }
         i++;
         accum_i++; 
-    }
-    flush_compressed_data(f);
-    rcu_read_unlock();
+      }
+      flush_compressed_data(f);
+      rcu_read_unlock();
 
 // MPLM
-    if(local_debug_flag){
+      if(local_debug_flag){
     	printf("(RSI: rsi_entry, i, accum_i, gap, bc, ret) [%d, %d, %d, %" PRId64 " ms, %d %d]\n",
     			num_enter_ram_save_iterate, i, accum_i, calling_gap, break_code, ret);
     	fflush(stdout);
-    }
+      }
 
     // MPLM: in case that the transmission exceeds max transfer rate limits, 
     // we check wakeup time every (accum_i & 63) iterations.  
-    if(mplm_flag){
+      if(mplm_flag){
       if((break_code == 0)&&(ret == 0)&&((accum_i & 63) == 0)){
           struct timeval t_cur;
           gettimeofday(&t_cur, NULL);
@@ -2889,20 +3041,65 @@ static int ram_save_iterate(QEMUFile *f, void *opaque)
                accum_i = 0; 
           }
       }
-    } 
+      } 
 
     /*
      * Must occur before EOS (or any QEMUFile operation)
      * because of RDMA protocol.
      */
-    ram_control_after_iterate(f, RAM_CONTROL_ROUND);
+      ram_control_after_iterate(f, RAM_CONTROL_ROUND);
 
-    qemu_put_be64(f, RAM_SAVE_FLAG_EOS);
-    bytes_transferred += 8;
+      qemu_put_be64(f, RAM_SAVE_FLAG_EOS);
+      bytes_transferred += 8;
 
-    ret = qemu_file_get_error(f);
-    if (ret < 0) {
+      ret = qemu_file_get_error(f);
+      if (ret < 0) {
         return ret;
+      }
+    } else { // if mplm_flag
+      i = 0;
+      while ((ret = qemu_file_rate_limit(f)) == 0) {
+        int pages;
+
+        pages = ram_find_and_save_block(f, false, &bytes_transferred);
+        /* no more pages to sent */
+        if (pages == 0) {
+            done = 1;
+            break;
+        }
+        acct_info.iterations++;
+
+        /* we want to check in the 1st loop, just in case it was the 1st time
+           and we had to sync the dirty bitmap.
+           qemu_get_clock_ns() is a bit expensive, so we only check each some
+           iterations
+        */
+        if ((i & 63) == 0) {
+            uint64_t t1 = (qemu_clock_get_ns(QEMU_CLOCK_REALTIME) - t0) / 1000000;
+            if (t1 > MAX_WAIT) {
+                trace_ram_save_iterate_big_wait(t1, i);
+                break;
+            }
+        }
+        i++;
+      }
+      flush_compressed_data(f);
+      rcu_read_unlock();
+
+    /*
+     * Must occur before EOS (or any QEMUFile operation)
+     * because of RDMA protocol.
+     */
+      ram_control_after_iterate(f, RAM_CONTROL_ROUND);
+
+      qemu_put_be64(f, RAM_SAVE_FLAG_EOS);
+      bytes_transferred += 8;
+
+      ret = qemu_file_get_error(f);
+      if (ret < 0) {
+        return ret;
+      }
+
     }
 
     return done;
@@ -3009,45 +3206,44 @@ static void ram_save_pending(QEMUFile *f, void *opaque, uint64_t max_size,
     remaining_size = ram_save_remaining() * TARGET_PAGE_SIZE;
 
     if(mplm_flag){
-    	if (!migration_in_postcopy(migrate_get_current()) &&
-    		((remaining_size < max_size)||(mplm_bitmap_sync_flag))) {
+        if (!migration_in_postcopy(migrate_get_current()) &&
+    	  ((remaining_size < max_size)||(mplm_bitmap_sync_flag))) {
 
-    		qemu_mutex_lock_iothread();
-    		rcu_read_lock();
-    		migration_bitmap_sync(0);
-    		mplm_bitmap_sync_flag = 0; // MPLM reset
+    	    qemu_mutex_lock_iothread();
+    	    rcu_read_lock();
+    	    migration_bitmap_sync(0);
+    	    mplm_bitmap_sync_flag = 0; // MPLM reset
 
                 // At this point, the iothread stops, so we copy the value of  
                 // qmp_extend_live_migration_flag variable to our 
                 // mplm_extend_live_migration_flag variable to be used by 
                 // the migration thread. (This avoids race condition.) 
 
-                mplm_extend_live_migration_flag = qmp_mplm_extend_live_migration; 
+            mplm_extend_live_migration_flag = qmp_mplm_extend_live_migration; 
 
-    		rcu_read_unlock();
-    		qemu_mutex_unlock_iothread();
+    	    rcu_read_unlock();
+    	    qemu_mutex_unlock_iothread();
 
-    		remaining_size = ram_save_remaining() * TARGET_PAGE_SIZE;
+    	    remaining_size = ram_save_remaining() * TARGET_PAGE_SIZE;
 
-                // MPLM ending condition: basically, (!mig_extend)and(no more nondirty)
-                if(mplm_live_ending_conditions()){ 
-                  mplm_live_migration_stage_finish = 1;
-                  printf("pending: mplm_live_migration_stage_finish is ON\n"); 
-                  fflush(stdout); 
-
-                }
+            // MPLM ending condition: basically, (!mig_extend)and(no more nondirty)
+            if(mplm_live_ending_conditions()){ 
+                mplm_live_migration_stage_finish = 1;
+                printf("pending: mplm_live_migration_stage_finish is ON\n"); 
+                fflush(stdout); 
+            }
     	}
     }
     else{
     	if (!migration_in_postcopy(migrate_get_current()) &&
-    		remaining_size < max_size) {
+    	    remaining_size < max_size) {
 
-    		qemu_mutex_lock_iothread();
-    		rcu_read_lock();
-    		migration_bitmap_sync(0);
-    		rcu_read_unlock();
-    		qemu_mutex_unlock_iothread();
-    		remaining_size = ram_save_remaining() * TARGET_PAGE_SIZE;
+    	    qemu_mutex_lock_iothread();
+    	    rcu_read_lock();
+    	    migration_bitmap_sync(0);
+    	    rcu_read_unlock();
+    	    qemu_mutex_unlock_iothread();
+    	    remaining_size = ram_save_remaining() * TARGET_PAGE_SIZE;
     	}
     }
 

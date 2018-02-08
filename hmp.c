@@ -1388,6 +1388,149 @@ void hmp_snapshot_blkdev(Monitor *mon, const QDict *qdict)
     hmp_handle_error(mon, &err);
 }
 
+// MPLCR
+int mplcr_snapshot_flag = 0; 
+int mplcr_snapshot_array_size = 0; 
+
+#define MPLCR_SNAPSHOT_STR_LEN   150
+#define MPLCR_SNAPSHOT_MAX_ITEMS 20
+
+struct mplcr_snapshot {
+    char *device;
+    char *filename;
+    char *format;
+    bool reuse;
+    enum NewImageMode mode;
+} mplcr_snapshot_array[MPLCR_SNAPSHOT_MAX_ITEMS];
+
+void hmp_snapshot_blkdev_mplcr(Monitor *mon, const QDict *qdict)
+{
+    const char *device = qdict_get_str(qdict, "device");
+    const char *filename = qdict_get_try_str(qdict, "snapshot-file");
+    const char *format = qdict_get_try_str(qdict, "format");
+    bool reuse = qdict_get_try_bool(qdict, "reuse", false);
+    enum NewImageMode mode;
+    Error *err = NULL;
+
+    mplcr_snapshot_flag = 1; 
+
+    if (mplcr_snapshot_array_size >= MPLCR_SNAPSHOT_MAX_ITEMS){
+        printf("too many mplcr snapshot items\n"); 
+        error_setg(&err, QERR_MISSING_PARAMETER, "snapshot-file");
+        hmp_handle_error(mon, &err);
+        return;
+    }
+
+    if (!filename) {
+        /* In the future, if 'snapshot-file' is not specified, the snapshot
+           will be taken internally. Today it's actually required. */
+        error_setg(&err, QERR_MISSING_PARAMETER, "snapshot-file");
+        hmp_handle_error(mon, &err);
+        return;
+    }
+
+    if (strlen(device) >= MPLCR_SNAPSHOT_STR_LEN) {
+        printf("device name too long\n"); 
+        error_setg(&err, QERR_MISSING_PARAMETER, "snapshot-file");
+        hmp_handle_error(mon, &err);
+        return;
+    }
+
+    if (strlen(filename) >= MPLCR_SNAPSHOT_STR_LEN) {
+        printf("filename name too long\n"); 
+        error_setg(&err, QERR_MISSING_PARAMETER, "snapshot-file");
+        hmp_handle_error(mon, &err);
+        return;
+    }
+
+    if (strlen(format) >= MPLCR_SNAPSHOT_STR_LEN) {
+        printf("format name too long\n"); 
+        error_setg(&err, QERR_MISSING_PARAMETER, "snapshot-file");
+        hmp_handle_error(mon, &err);
+        return;
+    }
+
+    if(device != NULL){
+        mplcr_snapshot_array[mplcr_snapshot_array_size].device 
+            = g_malloc0(MPLCR_SNAPSHOT_STR_LEN);
+        pstrcpy(mplcr_snapshot_array[mplcr_snapshot_array_size].device, 
+            MPLCR_SNAPSHOT_STR_LEN, device);    
+        printf("mplcr: device name is %s\n", mplcr_snapshot_array[mplcr_snapshot_array_size].device); 
+    } else {
+        mplcr_snapshot_array[mplcr_snapshot_array_size].device = NULL;
+        printf("warning device name is NULL\n"); 
+    }
+    
+    if(filename != NULL){
+        mplcr_snapshot_array[mplcr_snapshot_array_size].filename 
+            = g_malloc0(MPLCR_SNAPSHOT_STR_LEN);
+        pstrcpy(mplcr_snapshot_array[mplcr_snapshot_array_size].filename, 
+            MPLCR_SNAPSHOT_STR_LEN, filename);    
+        printf("mplcr: filename is %s\n", mplcr_snapshot_array[mplcr_snapshot_array_size].filename); 
+    } else {
+        mplcr_snapshot_array[mplcr_snapshot_array_size].filename = NULL;
+        printf("warning filename name is NULL\n"); 
+    }
+
+    if(filename != NULL){
+        mplcr_snapshot_array[mplcr_snapshot_array_size].format 
+            = g_malloc0(MPLCR_SNAPSHOT_STR_LEN);
+        pstrcpy(mplcr_snapshot_array[mplcr_snapshot_array_size].format, 
+            MPLCR_SNAPSHOT_STR_LEN, format);    
+        printf("mplcr: format is %s\n", mplcr_snapshot_array[mplcr_snapshot_array_size].format); 
+    } else {
+        mplcr_snapshot_array[mplcr_snapshot_array_size].format = NULL;
+        printf("warning format is NULL\n"); 
+    }
+
+    mplcr_snapshot_array[mplcr_snapshot_array_size].reuse = reuse; 
+
+    mode = reuse ? NEW_IMAGE_MODE_EXISTING : NEW_IMAGE_MODE_ABSOLUTE_PATHS;
+    mplcr_snapshot_array[mplcr_snapshot_array_size].mode = mode; 
+
+    mplcr_snapshot_array_size++; 
+
+    hmp_handle_error(mon, &err);
+}
+
+void mplcr_snapshot_blkdev_processing(void); 
+
+void mplcr_snapshot_blkdev_processing(void)
+{
+    int i; 
+    Error *err = NULL;
+
+    for(i = 0; i < mplcr_snapshot_array_size; i++){
+
+        const char *device = mplcr_snapshot_array[i].device;
+        const char *filename = mplcr_snapshot_array[i].filename;
+        const char *format = mplcr_snapshot_array[i].format;
+        enum NewImageMode mode = mplcr_snapshot_array[i].mode;
+
+        if (device) printf("mplcr: device name is %s\n", device); 
+        if (filename) printf("mplcr: filename is %s\n", filename); 
+        if (format) printf("mplcr: format is %s\n", format); 
+
+        qmp_blockdev_snapshot_sync(true, device, false, NULL,
+                               filename, false, NULL,
+                               !!format, format,
+                               true, mode, &err);
+
+        g_free(mplcr_snapshot_array[i].device);
+        mplcr_snapshot_array[i].device = NULL;
+        g_free(mplcr_snapshot_array[i].filename);
+        mplcr_snapshot_array[i].filename = NULL;
+        g_free(mplcr_snapshot_array[i].format);
+        mplcr_snapshot_array[i].format = NULL;
+
+    }
+
+    mplcr_snapshot_array_size = 0; // reset the table size
+    mplcr_snapshot_flag = 0; 
+
+    hmp_handle_error(NULL, &err);
+}
+
 void hmp_snapshot_blkdev_internal(Monitor *mon, const QDict *qdict)
 {
     const char *device = qdict_get_str(qdict, "device");
