@@ -312,26 +312,27 @@ $ echo "set-mplm-end-live" | nc localhost 9666
 MPLM operates under a set of configuration parameters. They are: 
 <ul>
  <li> <b>MPLM-enable flag (denote "enable")</b>: You can enable or disable MPLM algorithm. MPLM is eanled by default. By disabling it, 
-  live migration mechanism will adopt the ending conditions of the pre-copy mechanism based on the maximum tolrerable 
-  downtime rather than its own. Note that, although very similar, the migration operation under disabling MPLM mode is 
+  live migration mechanism will adopt the ending conditions of the pre-copy mechanism based on the default maximum tolrerable 
+  downtime. Note that, although very similar, the migration operation under disabling MPLM mode is 
   not identical to that of the original pre-copy. 
  <li> <b>Transmit-nondirty-pages-only-on-first-epoch flag (denote "firstnondirty")</b>: During live migration, 
   MPLM transfer memory pages in a serie of epoch.  
-  Each epoch last approximately 3 seconds. This flag instructs MPLM to transmit only nondirty pages in during the first epoch. MPLM 
-  will alternate the transfer of dirty and nondirty pages afterward. This flag is set by default. By resetting it, 
+  Each epoch last approximately 3 seconds. This flag instructs MPLM to transmit only nondirty pages during the first epoch. MPLM 
+  will alternate the transfer of dirty and nondirty pages in the subsequent epochs. This flag is set by default. By resetting it, 
   MPLM will multiplex the transfers of dirty and nondirty pages from the beginning. 
- <li> <b>The length of an epoch interval (denote "intervaltime")</b>: This parameter defines how long an epoch of 
-  the live migration last. Its unit is a second. The default value is 3 seconds. 
- <li> <b>Relaxed-memory-page-transmission flag (denote "relaxlivemig")</b>: This flag tells MPLM to relax its operation in finding dirty 
-  and nondirty pages to transfer to destination during live migration. Without this relaxation, MPLM will serach 
-  for dirty and nondirty pages in the bitmap data structures (which represent all dirty page information of VM memory) until 
-  one is found. Since this operation is costly, we relax the searching operation by allowing MPLM to skip the search for 
-  a particular type of a page in the data structures if the type of the current page it is inspecting does not 
-  match. This falg is enabled by default.
+ <li> <b>The length of an epoch interval (denote "intervaltime")</b>: This parameter defines the duration of an epoch (in seconds). The default value is 3 seconds. 
+ <li> <b>Relaxed-memory-page-transmission flag (denote "relaxlivemig")</b>: This flag tells MPLM to relax the finding of dirty 
+  and nondirty pages during live migration. The value is true by default. This flag cause MPLM to operate following the data transmission mechanism described in <a href="https://github.com/kasidit/qemu-mplm/tree/master/docs/paper-MPLM.pdf">this paper</a>.   
+  MPLM alternates the transfers of a batch of dirty and non-dirty pages during live migration. 
+  Each batch contains a number of pages, 50 by default. 
+  Without this relaxation, MPLM will search for a particular type of page during each batch of memory page transfer 
+  and tranfer a page if and only if that type of page is found. This seraching operation is costly. 
+  Therefore, we relax the searching operation by using the algorithm in the paper to allow MPLM to transfer data as quickly as possible
+  to improve live migration performance. This flag is enabled (and recommended) by default.
  <li> <b>The percentage of the transmission of dirty pages during live migration (denote "dirtypercents")</b>: 
-  In a sequence of 100 pages MPLM transfers
+  As mentioned earlier, MPLM transfers batches of dirty and non-dirty pages alternately. In a sequence of 100 pages MPLM transfers
   to the destination during live migration, the number of dirty pages within those 100 pages is defined by this variable. 
-  The default value is 50. 
+  The default value is 50. Thus, the number of pages in a batch of dirty and non-dirty pages is 50 pages in the default MPLM live migration. 
 </ul>
 You can change values of these parameters by running the following commands before starting a migration. (See <a href="https://github.com/kasidit/qemu-mplm/blob/master/migration/MPLM/qmp-set-mplm-migration.sh">qmp-set-mplm-migration.sh</a>)
 <p>
